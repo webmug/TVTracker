@@ -1,0 +1,9 @@
+# Railway/Nixpacks build-config.
+#
+# Standaard draait Nixpacks `npm ci`, maar dat liep tegen npm-bug #4828 aan:
+# op Linux werd de platform-specifieke native binary van @tailwindcss/oxide
+# (Tailwind v4) niet meegeïnstalleerd, waardoor `next build` crashte met
+# "Cannot find native binding". `npm install` her-resolvet de optionele
+# platform-deps wél correct.
+[phases.install]
+cmds = ["npm install --no-audit --no-fund"]

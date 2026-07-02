@@ -9,6 +9,12 @@ interface ReportSeries {
   episodeCount: number;
   confidence: "id" | "name" | "none";
 }
+interface ReportMovie {
+  title: string | null;
+  matchedTmdbId: number | null;
+  matchedName: string | null;
+  confidence: "id" | "name" | "none";
+}
 interface ApiResult {
   mode: string;
   files: { name: string; rows: number; mapping: Record<string, string> }[];
@@ -16,6 +22,10 @@ interface ApiResult {
   report: {
     series: ReportSeries[];
     totals: { series: number; matched: number; episodes: number; unmatchedSeries: number };
+  };
+  movieReport: {
+    movies: ReportMovie[];
+    totals: { movies: number; matched: number; unmatched: number };
   };
 }
 
@@ -50,6 +60,7 @@ export default function ImportPage() {
   }
 
   const t = result?.report.totals;
+  const m = result?.movieReport?.totals;
 
   return (
     <main>
@@ -169,6 +180,55 @@ export default function ImportPage() {
               </li>
             ))}
           </ul>
+
+          {m && m.movies > 0 && (
+            <>
+              <div className="mt-8 grid grid-cols-2 gap-3 text-center">
+                <Stat label="Films" value={m.movies} />
+                <Stat label="Films herkend" value={m.matched} />
+              </div>
+
+              {m.unmatched > 0 && (
+                <p className="mt-4 text-sm text-amber-300">
+                  {m.unmatched} film(s) niet automatisch herkend — zie lijst.
+                </p>
+              )}
+
+              <h2 className="mb-2 mt-6 text-sm font-medium text-[--color-muted]">
+                Films
+              </h2>
+              <ul className="flex flex-col gap-1.5">
+                {result.movieReport.movies.map((mv, i) => (
+                  <li
+                    key={i}
+                    className="flex items-center gap-3 rounded-lg border border-white/10 bg-[--color-panel] px-3 py-2 text-sm"
+                  >
+                    <span className="flex-1">
+                      {mv.title ?? "(onbekende titel)"}
+                      {mv.matchedName && mv.matchedName !== mv.title && (
+                        <span className="text-[--color-muted]"> → {mv.matchedName}</span>
+                      )}
+                    </span>
+                    <span
+                      className={
+                        mv.confidence === "id"
+                          ? "text-emerald-400"
+                          : mv.confidence === "name"
+                            ? "text-sky-400"
+                            : "text-red-300"
+                      }
+                    >
+                      {mv.confidence === "id"
+                        ? "match (id)"
+                        : mv.confidence === "name"
+                          ? "match (titel)"
+                          : "geen match"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </div>
       )}
     </main>

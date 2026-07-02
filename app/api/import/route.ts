@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { parseTvTimeZip, runImport } from "@/lib/import/tvtime";
+import { parseTvTimeZip, runImport, runMovieImport } from "@/lib/import/tvtime";
 
 export const maxDuration = 300; // import kan even duren (veel TMDB-calls)
 
@@ -29,14 +29,15 @@ export async function POST(req: Request) {
     );
   }
 
-  const report = await runImport(session.user.id, parsed.rows, {
-    dryRun: mode !== "commit",
-  });
+  const dryRun = mode !== "commit";
+  const report = await runImport(session.user.id, parsed.rows, { dryRun });
+  const movieReport = await runMovieImport(session.user.id, parsed.movies, { dryRun });
 
   return NextResponse.json({
     mode,
     files: parsed.files,
     warnings: parsed.warnings,
     report,
+    movieReport,
   });
 }

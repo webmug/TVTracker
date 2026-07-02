@@ -68,6 +68,31 @@ export async function getShow(tmdbId: number): Promise<TmdbShowDetails> {
   return tmdb<TmdbShowDetails>(`/tv/${tmdbId}`);
 }
 
+export interface TmdbMovieResult {
+  id: number;
+  title: string;
+  overview: string;
+  poster_path: string | null;
+  release_date: string | null;
+}
+
+export interface TmdbMovieDetails extends TmdbMovieResult {
+  status: string | null;
+}
+
+export async function searchMovies(query: string): Promise<TmdbMovieResult[]> {
+  if (!query.trim()) return [];
+  const data = await tmdb<{ results: TmdbMovieResult[] }>("/search/movie", {
+    query,
+    include_adult: "false",
+  });
+  return data.results ?? [];
+}
+
+export async function getMovie(tmdbId: number): Promise<TmdbMovieDetails> {
+  return tmdb<TmdbMovieDetails>(`/movie/${tmdbId}`);
+}
+
 export async function getSeasonEpisodes(
   tmdbId: number,
   seasonNumber: number

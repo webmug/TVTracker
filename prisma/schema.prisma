@@ -24,6 +24,7 @@ model User {
   sessions        Session[]
   follows         Follow[]
   watchedEpisodes WatchedEpisode[]
+  watchedMovies   WatchedMovie[]
   invitesSent     Invite[]         @relation("InvitedBy")
 }
 
@@ -148,5 +149,34 @@ model WatchedEpisode {
   episode Episode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
 
   @@unique([userId, episodeId])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Films (licht: alleen een "gezien"-logboek, geen seizoenen/afleveringen/meldingen)
+// ---------------------------------------------------------------------------
+
+model Movie {
+  id           String    @id @default(cuid())
+  tmdbId       Int       @unique
+  title        String
+  overview     String?
+  posterPath   String?
+  releaseDate  DateTime?
+  lastSyncedAt DateTime  @default(now())
+
+  watched WatchedMovie[]
+}
+
+model WatchedMovie {
+  id        String   @id @default(cuid())
+  userId    String
+  movieId   String
+  watchedAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movie Movie @relation(fields: [movieId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, movieId])
   @@index([userId])
 }

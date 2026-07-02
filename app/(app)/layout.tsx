@@ -21,6 +21,9 @@ export default async function AppLayout({
           <Link href="/dashboard" className="hover:text-white">
             Up Next
           </Link>
+          <Link href="/movies" className="hover:text-white">
+            Films
+          </Link>
           <Link href="/search" className="hover:text-white">
             Zoeken
           </Link>
