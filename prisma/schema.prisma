@@ -1,0 +1,152 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Auth.js models (magic-link / email provider)
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  role          Role      @default(MEMBER)
+  createdAt     DateTime  @default(now())
+
+  accounts        Account[]
+  sessions        Session[]
+  follows         Follow[]
+  watchedEpisodes WatchedEpisode[]
+  invitesSent     Invite[]         @relation("InvitedBy")
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ---------------------------------------------------------------------------
+// Invite-only access
+// ---------------------------------------------------------------------------
+
+model Invite {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  token     String    @unique
+  invitedBy String?
+  createdAt DateTime  @default(now())
+  usedAt    DateTime?
+
+  inviter User? @relation("InvitedBy", fields: [invitedBy], references: [id], onDelete: SetNull)
+}
+
+// ---------------------------------------------------------------------------
+// TV domain
+// ---------------------------------------------------------------------------
+
+model Show {
+  id           String    @id @default(cuid())
+  tmdbId       Int       @unique
+  name         String
+  overview     String?
+  posterPath   String?
+  status       String? // "Returning Series", "Ended", "Canceled", ...
+  firstAirDate DateTime?
+  lastSyncedAt DateTime  @default(now())
+
+  episodes Episode[]
+  follows  Follow[]
+}
+
+model Episode {
+  id       String    @id @default(cuid())
+  showId   String
+  tmdbId   Int? // TMDB episode id (kan ontbreken)
+  season   Int
+  number   Int
+  name     String?
+  overview String?
+  airDate  DateTime?
+
+  show    Show             @relation(fields: [showId], references: [id], onDelete: Cascade)
+  watched WatchedEpisode[]
+
+  @@unique([showId, season, number])
+  @@index([airDate])
+}
+
+model Follow {
+  id        String       @id @default(cuid())
+  userId    String
+  showId    String
+  status    FollowStatus @default(WATCHING)
+  createdAt DateTime     @default(now())
+  // Cursor voor meldingen: hoogste air-datum die al is "gezien" door de cron.
+  notifiedThroughDate DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  show Show @relation(fields: [showId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, showId])
+}
+
+enum FollowStatus {
+  WATCHING
+  PAUSED
+  FINISHED
+}
+
+model WatchedEpisode {
+  id        String   @id @default(cuid())
+  userId    String
+  episodeId String
+  watchedAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  episode Episode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, episodeId])
+  @@index([userId])
+}

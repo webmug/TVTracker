@@ -1,0 +1,18 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background: #0b1020;
+  color: #e6e9f2;
+}
+
+@theme {
+  --color-ink: #0b1020;
+  --color-panel: #151a30;
+  --color-panel2: #1c2340;
+  --color-accent: #5b8cff;
+  --color-muted: #8b93ad;
+}
