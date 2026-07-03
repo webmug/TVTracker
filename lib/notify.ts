@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { syncShow } from "@/lib/shows";
-import { sendNewEpisodesEmail, type NewEpisodeMail } from "@/lib/email";
+import {
+  sendNewEpisodesEmail,
+  sendWeeklyDigestEmail,
+  type NewEpisodeMail,
+} from "@/lib/email";
 
 function epLabel(season: number, number: number): string {
   return `S${String(season).padStart(2, "0")}E${String(number).padStart(2, "0")}`;
@@ -36,7 +40,7 @@ export async function checkNewEpisodes(): Promise<NotifyResult> {
   const follows = await prisma.follow.findMany({
     where: { status: { in: ["WATCHING", "PAUSED"] } },
     include: {
-      user: { select: { id: true, email: true } },
+      user: { select: { id: true, email: true, dailyEmails: true } },
       show: {
         select: {
           name: true,
@@ -58,8 +62,10 @@ export async function checkNewEpisodes(): Promise<NotifyResult> {
     const fresh = f.show.episodes.filter(
       (e) => e.airDate && e.airDate > cursor && e.airDate <= now
     );
+    // Cursor blijft ook meelopen als de gebruiker de mail uit heeft, zodat er geen
+    // backlog ontstaat wanneer die weer wordt aangezet.
     followIdsToAdvance.push(f.id);
-    if (fresh.length === 0) continue;
+    if (fresh.length === 0 || !f.user.dailyEmails) continue;
 
     let bucket = perUser.get(f.user.id);
     if (!bucket) {
@@ -93,6 +99,87 @@ export async function checkNewEpisodes(): Promise<NotifyResult> {
       where: { id: { in: followIdsToAdvance } },
       data: { notifiedThroughDate: now },
     });
+  }
+
+  return { showsRefreshed: shows.length, emailsSent, errors };
+}
+
+// Wekelijkse vrijdag-samenvatting: bundelt alle afleveringen die de afgelopen 7 dagen
+// zijn uitgezonden voor gevolgde series, en mailt elke gebruiker die de digest aan heeft.
+// Gebruikt bewust een vast tijdvenster en raakt Follow.notifiedThroughDate NIET aan, zodat
+// het los staat van de dagelijkse cursor in checkNewEpisodes.
+export async function sendWeeklyDigest(): Promise<NotifyResult> {
+  const appUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+  const now = new Date();
+  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const errors: string[] = [];
+
+  // 1. Ververs alle gevolgde series, zodat de data ook vers is als de dagelijkse job uit staat.
+  const shows = await prisma.show.findMany({
+    where: { follows: { some: {} } },
+    select: { tmdbId: true },
+  });
+  for (const s of shows) {
+    try {
+      await syncShow(s.tmdbId, { force: true });
+    } catch (e) {
+      errors.push(`sync ${s.tmdbId}: ${(e as Error).message}`);
+    }
+  }
+
+  // 2. Verzamel per gebruiker de afleveringen uit de afgelopen week.
+  const follows = await prisma.follow.findMany({
+    where: {
+      status: { in: ["WATCHING", "PAUSED"] },
+      user: { weeklyDigest: true },
+    },
+    include: {
+      user: { select: { id: true, email: true } },
+      show: {
+        select: {
+          name: true,
+          episodes: {
+            orderBy: [{ season: "asc" }, { number: "asc" }],
+            select: { season: true, number: true, name: true, airDate: true },
+          },
+        },
+      },
+    },
+  });
+
+  const perUser = new Map<string, { email: string; shows: NewEpisodeMail[] }>();
+
+  for (const f of follows) {
+    if (!f.user.email) continue;
+    const fresh = f.show.episodes.filter(
+      (e) => e.airDate && e.airDate >= weekAgo && e.airDate <= now
+    );
+    if (fresh.length === 0) continue;
+
+    let bucket = perUser.get(f.user.id);
+    if (!bucket) {
+      bucket = { email: f.user.email, shows: [] };
+      perUser.set(f.user.id, bucket);
+    }
+    bucket.shows.push({
+      showName: f.show.name,
+      episodes: fresh.map((e) => ({
+        label: epLabel(e.season, e.number),
+        name: e.name,
+        airDate: e.airDate,
+      })),
+    });
+  }
+
+  // 3. Verstuur e-mails.
+  let emailsSent = 0;
+  for (const { email, shows: userShows } of perUser.values()) {
+    try {
+      await sendWeeklyDigestEmail(email, userShows, appUrl);
+      emailsSent++;
+    } catch (e) {
+      errors.push(`mail ${email}: ${(e as Error).message}`);
+    }
   }
 
   return { showsRefreshed: shows.length, emailsSent, errors };

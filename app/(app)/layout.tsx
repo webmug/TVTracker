@@ -34,6 +34,9 @@ export default async function AppLayout({
           <Link href="/import" className="hover:text-white">
             Import
           </Link>
+          <Link href="/settings" className="hover:text-white">
+            Instellingen
+          </Link>
           {isAdmin && (
             <Link href="/admin/invites" className="hover:text-white">
               Uitnodigen

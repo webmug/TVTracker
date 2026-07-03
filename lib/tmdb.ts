@@ -15,6 +15,12 @@ function authParams(): { headers: Record<string, string>; query: string } {
 }
 
 async function tmdb<T>(path: string, params: Record<string, string | number> = {}): Promise<T> {
+  // Dev-only: canned data teruggeven zonder netwerk/key als TMDB_MOCK=1 staat.
+  if (process.env.TMDB_MOCK === "1") {
+    const { mockTmdb } = await import("@/lib/tmdb-fixtures");
+    const mocked = mockTmdb(path);
+    if (mocked !== undefined) return mocked as T;
+  }
   const { headers, query } = authParams();
   const usp = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) usp.set(k, String(v));
@@ -111,6 +117,8 @@ export interface DiscoverItem {
   overview: string;
   posterPath: string | null;
   year: string | null;
+  // Alleen voor series, optioneel aangevuld: TMDB-status ("Ended", "Returning Series", …).
+  status?: string | null;
 }
 
 // Ruwe TMDB-rij (velden verschillen per media-type).
@@ -144,6 +152,27 @@ export async function getTrending(
 ): Promise<DiscoverItem[]> {
   const data = await tmdb<{ results: RawMediaResult[] }>(`/trending/${media}/${window}`);
   return (data.results ?? []).map((r) => normalizeMedia(r, media)).filter((i) => i.posterPath);
+}
+
+// Lichte fetch van alleen de serie-status, voor de "loopt/geëindigd"-badge op Verken.
+export async function getShowStatus(tmdbId: number): Promise<string | null> {
+  const data = await tmdb<{ status: string | null }>(`/tv/${tmdbId}`);
+  return data.status ?? null;
+}
+
+// Vertaalt een ruwe TMDB-seriestatus naar een NL-badge; null = niet tonen.
+export function tvStatusLabel(
+  status: string | null | undefined
+): { text: string; ended: boolean } | null {
+  if (!status) return null;
+  const s = status.toLowerCase();
+  if (s === "ended" || s === "canceled" || s === "cancelled") {
+    return { text: "Geëindigd", ended: true };
+  }
+  if (s === "returning series" || s === "in production" || s === "planned" || s === "pilot") {
+    return { text: "Loopt nog", ended: false };
+  }
+  return null;
 }
 
 export async function getShowRecommendations(tmdbId: number): Promise<DiscoverItem[]> {
