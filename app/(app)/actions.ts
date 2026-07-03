@@ -21,8 +21,9 @@ export async function followShow(tmdbId: number) {
     create: { userId: user.id, showId: show.id },
     update: {},
   });
-  revalidatePath("/dashboard");
-  revalidatePath(`/show/${tmdbId}`);
+  // Geen revalidatePath: de FollowButton flipt lokaal en /dashboard, /series en
+  // /show zijn dynamisch (laden vers bij navigatie). Revalidatie zou de
+  // client-router-cache legen en carousels op Verken/Zoeken laten springen.
 }
 
 export async function unfollowShow(tmdbId: number) {
@@ -31,8 +32,7 @@ export async function unfollowShow(tmdbId: number) {
   if (show) {
     await prisma.follow.deleteMany({ where: { userId: user.id, showId: show.id } });
   }
-  revalidatePath("/dashboard");
-  revalidatePath(`/show/${tmdbId}`);
+  // Zie followShow: geen revalidatePath om reflow te voorkomen.
 }
 
 export async function setFollowStatus(
@@ -113,7 +113,10 @@ export async function addMovieToWatchlist(tmdbId: number) {
       update: {},
     });
   }
-  revalidatePath("/movies");
+  // Bewust géén revalidatePath: deze knop staat op Zoeken/Verken, waar de kaart
+  // alleen lokaal naar "op watchlist" flipt. Revalidatie zou de client-router-
+  // cache legen en de Verken-pagina laten herbouwen (nieuwe rijen → springt).
+  // /movies is dynamisch en laadt bij navigatie toch vers.
 }
 
 // Film (via TMDB-id) meteen als "gezien" markeren en van de watchlist halen.
@@ -126,7 +129,8 @@ export async function markMovieWatchedByTmdb(tmdbId: number) {
     update: {},
   });
   await prisma.watchlistMovie.deleteMany({ where: { userId: user.id, movieId: movie.id } });
-  revalidatePath("/movies");
+  // Zie addMovieToWatchlist: geen revalidatePath, om reflow op Verken/Zoeken te
+  // voorkomen. De kaart toont lokaal "✓ Gezien".
 }
 
 // Film van de watchlist afvinken: verplaats 'm naar "gezien".
