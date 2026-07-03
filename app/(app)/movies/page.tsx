@@ -4,6 +4,7 @@ import { getWatchlistMovies, getWatchedMoviesPage, PAGE_SIZE } from "@/lib/libra
 import { PosterCard } from "@/app/(app)/_components/PosterCard";
 import { WatchedMoviesGrid } from "@/app/(app)/_components/WatchedMoviesGrid";
 import { WatchlistCheckButton } from "@/app/(app)/_components/WatchlistCheckButton";
+import { ExternalLinks } from "@/app/(app)/_components/ExternalLinks";
 
 type MovieFilter = "all" | "watchlist" | "watched";
 
@@ -94,6 +95,7 @@ export default async function MoviesPage({
                 subtitle={m.year ? String(m.year) : null}
                 fallbackEmoji="🎬"
                 action={<WatchlistCheckButton movieId={m.id} />}
+                links={<ExternalLinks imdbId={m.imdbId} tmdbId={m.tmdbId} kind="movie" />}
               />
             ))}
           </div>

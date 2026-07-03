@@ -28,6 +28,7 @@ export async function syncShow(
     where: { tmdbId },
     create: {
       tmdbId,
+      imdbId: details.external_ids?.imdb_id ?? null,
       name: details.name,
       overview: details.overview || null,
       posterPath: details.poster_path,
@@ -35,6 +36,7 @@ export async function syncShow(
       firstAirDate: parseDate(details.first_air_date),
     },
     update: {
+      imdbId: details.external_ids?.imdb_id ?? null,
       name: details.name,
       overview: details.overview || null,
       posterPath: details.poster_path,
@@ -94,12 +96,14 @@ export async function syncMovie(
     where: { tmdbId },
     create: {
       tmdbId,
+      imdbId: details.imdb_id ?? null,
       title: details.title,
       overview: details.overview || null,
       posterPath: details.poster_path,
       releaseDate: parseDate(details.release_date),
     },
     update: {
+      imdbId: details.imdb_id ?? null,
       title: details.title,
       overview: details.overview || null,
       posterPath: details.poster_path,

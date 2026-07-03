@@ -91,6 +91,7 @@ model Invite {
 model Show {
   id           String    @id @default(cuid())
   tmdbId       Int       @unique
+  imdbId       String? // IMDb-id (bv. "tt1234567") voor externe link
   name         String
   overview     String?
   posterPath   String?
@@ -160,6 +161,7 @@ model WatchedEpisode {
 model Movie {
   id           String    @id @default(cuid())
   tmdbId       Int       @unique
+  imdbId       String? // IMDb-id (bv. "tt1234567") voor externe link
   title        String
   overview     String?
   posterPath   String?
