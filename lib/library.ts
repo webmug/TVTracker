@@ -59,37 +59,59 @@ export async function getSeriesLibraryPage(
       status: true,
       show: {
         select: {
+          id: true,
           tmdbId: true,
           name: true,
           posterPath: true,
-          episodes: {
-            select: {
-              airDate: true,
-              watched: { where: { userId }, select: { episodeId: true }, take: 1 },
-            },
-          },
         },
       },
     },
   });
 
-  return follows.map((f) => {
-    const eps = f.show.episodes;
-    const isFuture = (e: { airDate: Date | null }) =>
-      e.airDate != null && e.airDate.getTime() > now.getTime();
-    const total = eps.length;
-    const upcoming = eps.filter(isFuture).length;
-    const watched = eps.filter((e) => e.watched.length > 0 && !isFuture(e)).length;
-    return {
-      tmdbId: f.show.tmdbId,
-      name: f.show.name,
-      posterPath: f.show.posterPath,
-      status: f.status,
-      total,
-      watched,
-      upcoming,
-    };
-  });
+  const showIds = follows.map((f) => f.show.id);
+
+  // Tellingen via aggregatie i.p.v. alle afleveringen te laden: 3 groupBy-queries
+  // over precies de series op deze pagina. Een langlopende serie materialiseert zo
+  // niet langer honderden afleveringrijen per kaart.
+  const [totalRows, upcomingRows, watchedRows] =
+    showIds.length === 0
+      ? [[], [], []]
+      : await Promise.all([
+          prisma.episode.groupBy({
+            by: ["showId"],
+            where: { showId: { in: showIds } },
+            _count: true,
+          }),
+          prisma.episode.groupBy({
+            by: ["showId"],
+            where: { showId: { in: showIds }, airDate: { gt: now } },
+            _count: true,
+          }),
+          // Uitgezonden (of undated) afleveringen die de gebruiker heeft gezien.
+          prisma.episode.groupBy({
+            by: ["showId"],
+            where: {
+              showId: { in: showIds },
+              ...aired,
+              watched: { some: { userId } },
+            },
+            _count: true,
+          }),
+        ]);
+
+  const totalById = new Map(totalRows.map((r) => [r.showId, r._count]));
+  const upcomingById = new Map(upcomingRows.map((r) => [r.showId, r._count]));
+  const watchedById = new Map(watchedRows.map((r) => [r.showId, r._count]));
+
+  return follows.map((f) => ({
+    tmdbId: f.show.tmdbId,
+    name: f.show.name,
+    posterPath: f.show.posterPath,
+    status: f.status,
+    total: totalById.get(f.show.id) ?? 0,
+    watched: watchedById.get(f.show.id) ?? 0,
+    upcoming: upcomingById.get(f.show.id) ?? 0,
+  }));
 }
 
 export interface MovieCard {

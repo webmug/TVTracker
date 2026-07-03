@@ -10,6 +10,36 @@ function epLabel(season: number, number: number): string {
   return `S${String(season).padStart(2, "0")}E${String(number).padStart(2, "0")}`;
 }
 
+// Verwerk items in batches van `concurrency` tegelijk (i.p.v. strikt sequentieel),
+// zodat de TMDB-refresh niet lineair oploopt met het aantal series.
+async function mapWithConcurrency<T>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T) => Promise<void>
+): Promise<void> {
+  for (let i = 0; i < items.length; i += concurrency) {
+    await Promise.all(items.slice(i, i + concurrency).map(fn));
+  }
+}
+
+// Ververst alle gevolgde series van TMDB (met beperkte concurrency). Gedeeld door
+// de dagelijkse en wekelijkse job. Geeft het aantal series + eventuele fouten terug.
+async function refreshFollowedShows(): Promise<{ count: number; errors: string[] }> {
+  const errors: string[] = [];
+  const shows = await prisma.show.findMany({
+    where: { follows: { some: {} } },
+    select: { tmdbId: true },
+  });
+  await mapWithConcurrency(shows, 5, async (s) => {
+    try {
+      await syncShow(s.tmdbId, { force: true });
+    } catch (e) {
+      errors.push(`sync ${s.tmdbId}: ${(e as Error).message}`);
+    }
+  });
+  return { count: shows.length, errors };
+}
+
 export interface NotifyResult {
   showsRefreshed: number;
   emailsSent: number;
@@ -21,22 +51,13 @@ export interface NotifyResult {
 export async function checkNewEpisodes(): Promise<NotifyResult> {
   const appUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
   const now = new Date();
-  const errors: string[] = [];
 
   // 1. Ververs alle gevolgde series.
-  const shows = await prisma.show.findMany({
-    where: { follows: { some: {} } },
-    select: { tmdbId: true },
-  });
-  for (const s of shows) {
-    try {
-      await syncShow(s.tmdbId, { force: true });
-    } catch (e) {
-      errors.push(`sync ${s.tmdbId}: ${(e as Error).message}`);
-    }
-  }
+  const { count: showsRefreshed, errors } = await refreshFollowedShows();
 
-  // 2. Verzamel per gebruiker de nieuw uitgezonden afleveringen.
+  // 2. Verzamel per gebruiker de nieuw uitgezonden afleveringen. Alleen reeds
+  //    uitgezonden afleveringen laden (toekomstige tellen nooit mee); het per-follow
+  //    cursorvenster wordt daarna in JS toegepast.
   const follows = await prisma.follow.findMany({
     where: { status: { in: ["WATCHING", "PAUSED"] } },
     include: {
@@ -45,6 +66,7 @@ export async function checkNewEpisodes(): Promise<NotifyResult> {
         select: {
           name: true,
           episodes: {
+            where: { airDate: { lte: now } },
             orderBy: [{ season: "asc" }, { number: "asc" }],
             select: { season: true, number: true, name: true, airDate: true },
           },
@@ -101,7 +123,7 @@ export async function checkNewEpisodes(): Promise<NotifyResult> {
     });
   }
 
-  return { showsRefreshed: shows.length, emailsSent, errors };
+  return { showsRefreshed, emailsSent, errors };
 }
 
 // Wekelijkse vrijdag-samenvatting: bundelt alle afleveringen die de afgelopen 7 dagen
@@ -112,22 +134,12 @@ export async function sendWeeklyDigest(): Promise<NotifyResult> {
   const appUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
   const now = new Date();
   const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-  const errors: string[] = [];
 
   // 1. Ververs alle gevolgde series, zodat de data ook vers is als de dagelijkse job uit staat.
-  const shows = await prisma.show.findMany({
-    where: { follows: { some: {} } },
-    select: { tmdbId: true },
-  });
-  for (const s of shows) {
-    try {
-      await syncShow(s.tmdbId, { force: true });
-    } catch (e) {
-      errors.push(`sync ${s.tmdbId}: ${(e as Error).message}`);
-    }
-  }
+  const { count: showsRefreshed, errors } = await refreshFollowedShows();
 
-  // 2. Verzamel per gebruiker de afleveringen uit de afgelopen week.
+  // 2. Verzamel per gebruiker de afleveringen uit de afgelopen week. Meteen op het
+  //    weekvenster filteren in de query i.p.v. alle afleveringen te laden.
   const follows = await prisma.follow.findMany({
     where: {
       status: { in: ["WATCHING", "PAUSED"] },
@@ -139,6 +151,7 @@ export async function sendWeeklyDigest(): Promise<NotifyResult> {
         select: {
           name: true,
           episodes: {
+            where: { airDate: { gte: weekAgo, lte: now } },
             orderBy: [{ season: "asc" }, { number: "asc" }],
             select: { season: true, number: true, name: true, airDate: true },
           },
@@ -182,5 +195,5 @@ export async function sendWeeklyDigest(): Promise<NotifyResult> {
     }
   }
 
-  return { showsRefreshed: shows.length, emailsSent, errors };
+  return { showsRefreshed, emailsSent, errors };
 }

@@ -137,6 +137,8 @@ model Follow {
   show Show @relation(fields: [showId], references: [id], onDelete: Cascade)
 
   @@unique([userId, showId])
+  // Voor relatie-lookups vanaf de Show-kant (`follows: { some: {} }`).
+  @@index([showId])
 }
 
 enum FollowStatus {
@@ -156,6 +158,8 @@ model WatchedEpisode {
 
   @@unique([userId, episodeId])
   @@index([userId])
+  // Voor de `watched: { none/some: { userId } }`-subquery, die op episodeId correleert.
+  @@index([episodeId])
 }
 
 // ---------------------------------------------------------------------------
