@@ -5,9 +5,8 @@ import { SeriesGrid } from "@/app/(app)/_components/SeriesGrid";
 
 const FILTERS: { value: FollowFilter; label: string }[] = [
   { value: "all", label: "Alles" },
-  { value: "WATCHING", label: "Kijken" },
-  { value: "PAUSED", label: "Gepauzeerd" },
-  { value: "FINISHED", label: "Afgerond" },
+  { value: "watching", label: "Kijken" },
+  { value: "finished", label: "Afgerond" },
 ];
 
 export default async function SeriesPage({

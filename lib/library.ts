@@ -6,7 +6,10 @@ import { prisma } from "@/lib/prisma";
 
 export const PAGE_SIZE = 40;
 
-export type FollowFilter = "all" | "WATCHING" | "PAUSED" | "FINISHED";
+// Filters op basis van kijk-voortgang (niet op het handmatige Follow.status):
+//  - "watching" = nog minstens één ongeziene aflevering (nog niet uitgekeken)
+//  - "finished" = alle afleveringen gezien (bij)
+export type FollowFilter = "all" | "watching" | "finished";
 
 export interface SeriesCard {
   tmdbId: number;
@@ -25,10 +28,22 @@ export async function getSeriesLibraryPage(
   take = PAGE_SIZE,
   filter: FollowFilter = "all"
 ): Promise<SeriesCard[]> {
+  // Voortgangsfilter als relatie-conditie op de Show, zodat paginatie
+  // (skip/take) blijft werken.
+  const hasUnwatched = { episodes: { some: { watched: { none: { userId } } } } };
+  const allWatched = {
+    AND: [
+      { episodes: { some: {} } },
+      { episodes: { none: { watched: { none: { userId } } } } },
+    ],
+  };
+  const showFilter =
+    filter === "watching" ? hasUnwatched : filter === "finished" ? allWatched : undefined;
+
   const follows = await prisma.follow.findMany({
     where: {
       userId,
-      ...(filter === "all" ? {} : { status: filter }),
+      ...(showFilter ? { show: showFilter } : {}),
     },
     orderBy: { createdAt: "desc" },
     skip: offset,
