@@ -16,8 +16,9 @@ export interface SeriesCard {
   name: string;
   posterPath: string | null;
   status: string; // FollowStatus
-  total: number;
-  watched: number;
+  total: number; // alle afleveringen
+  watched: number; // geziene beschikbare (uitgezonden) afleveringen
+  upcoming: number; // nog te verwachten (toekomstige) afleveringen
 }
 
 // Eén pagina gevolgde series met voortgang (gezien/totaal), ongeacht status
@@ -28,13 +29,19 @@ export async function getSeriesLibraryPage(
   take = PAGE_SIZE,
   filter: FollowFilter = "all"
 ): Promise<SeriesCard[]> {
+  const now = new Date();
+
   // Voortgangsfilter als relatie-conditie op de Show, zodat paginatie
-  // (skip/take) blijft werken.
-  const hasUnwatched = { episodes: { some: { watched: { none: { userId } } } } };
+  // (skip/take) blijft werken. Voortgang rekent over *beschikbare* (uitgezonden)
+  // afleveringen; toekomstige afleveringen tellen niet mee.
+  const aired = { OR: [{ airDate: { lte: now } }, { airDate: null }] };
+  const hasUnwatched = {
+    episodes: { some: { AND: [aired, { watched: { none: { userId } } }] } },
+  };
   const allWatched = {
     AND: [
-      { episodes: { some: {} } },
-      { episodes: { none: { watched: { none: { userId } } } } },
+      { episodes: { some: aired } },
+      { episodes: { none: { AND: [aired, { watched: { none: { userId } } }] } } },
     ],
   };
   const showFilter =
@@ -55,24 +62,34 @@ export async function getSeriesLibraryPage(
           tmdbId: true,
           name: true,
           posterPath: true,
-          _count: { select: { episodes: true } },
           episodes: {
-            where: { watched: { some: { userId } } },
-            select: { id: true },
+            select: {
+              airDate: true,
+              watched: { where: { userId }, select: { episodeId: true }, take: 1 },
+            },
           },
         },
       },
     },
   });
 
-  return follows.map((f) => ({
-    tmdbId: f.show.tmdbId,
-    name: f.show.name,
-    posterPath: f.show.posterPath,
-    status: f.status,
-    total: f.show._count.episodes,
-    watched: f.show.episodes.length,
-  }));
+  return follows.map((f) => {
+    const eps = f.show.episodes;
+    const isFuture = (e: { airDate: Date | null }) =>
+      e.airDate != null && e.airDate.getTime() > now.getTime();
+    const total = eps.length;
+    const upcoming = eps.filter(isFuture).length;
+    const watched = eps.filter((e) => e.watched.length > 0 && !isFuture(e)).length;
+    return {
+      tmdbId: f.show.tmdbId,
+      name: f.show.name,
+      posterPath: f.show.posterPath,
+      status: f.status,
+      total,
+      watched,
+      upcoming,
+    };
+  });
 }
 
 export interface MovieCard {
