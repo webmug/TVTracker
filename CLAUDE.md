@@ -31,10 +31,12 @@ TMDB metadata · deployed on Railway. See `README.md` for setup, local dev, and 
 - `node --env-file=.env scripts/trigger-cron.mjs` — trigger the new-episode notification job.
 
 ## Layout
-- `app/(app)/` — protected pages: dashboard, search, show, import, admin/invites.
+- `app/(app)/` — protected pages: dashboard ("Up Next"), search, series, movies,
+  explore ("Verken"), show, import, admin/invites.
 - `app/login/`, `lib/auth.ts`, `lib/access.ts` — invite-only magic-link auth.
 - `app/api/` — auth, import, `cron/new-episodes` (secret-protected).
 - `lib/tmdb.ts`, `lib/shows.ts` — TMDB client + syncing shows/episodes to the DB.
+- `lib/library.ts` — paginated series/film library queries for the card grids.
 - `lib/notify.ts` — new-episode detection + e-mail.
 - `lib/import/tvtime.ts` — adaptive TV Time ZIP/CSV importer (column detection varies).
 - `prisma/schema.prisma` — data model.

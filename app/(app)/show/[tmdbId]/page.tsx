@@ -6,13 +6,8 @@ import { syncShow } from "@/lib/shows";
 import { posterUrl } from "@/lib/tmdb";
 import { FollowButton } from "@/app/(app)/_components/FollowButton";
 import { ExternalLinks } from "@/app/(app)/_components/ExternalLinks";
-import { WatchedCheckbox } from "@/app/(app)/_components/WatchedCheckbox";
-import { SeasonActions } from "@/app/(app)/_components/SeasonActions";
-import { MarkThroughButton } from "@/app/(app)/_components/MarkThroughButton";
-
-function epLabel(season: number, number: number): string {
-  return `S${String(season).padStart(2, "0")}E${String(number).padStart(2, "0")}`;
-}
+import { ShowSeasonsToggle } from "@/app/(app)/_components/ShowSeasonsToggle";
+import { SeasonSection } from "@/app/(app)/_components/SeasonSection";
 
 export default async function ShowPage({
   params,
@@ -59,6 +54,7 @@ export default async function ShowPage({
   const poster = posterUrl(show.posterPath, "w342");
   const totalWatched = watched.size;
   const total = show.episodes.length;
+  const allWatched = total > 0 && totalWatched === total;
 
   return (
     <main>
@@ -86,6 +82,9 @@ export default async function ShowPage({
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-4">
             <FollowButton tmdbId={tmdbId} following={Boolean(follow)} />
+            {total > 0 && (
+              <ShowSeasonsToggle tmdbId={tmdbId} allWatched={allWatched} />
+            )}
             <ExternalLinks imdbId={show.imdbId} tmdbId={show.tmdbId} kind="tv" />
           </div>
         </div>
@@ -93,50 +92,24 @@ export default async function ShowPage({
 
       <div className="mt-8 flex flex-col gap-8">
         {[...seasons.entries()].map(([season, eps]) => {
-          const allWatched = eps.every((e) => watched.has(e.id));
+          const watchedCount = eps.filter((e) => watched.has(e.id)).length;
           return (
-            <section key={season}>
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-lg font-medium">
-                  {season === 0 ? "Specials" : `Seizoen ${season}`}
-                </h2>
-                <SeasonActions tmdbId={tmdbId} season={season} allWatched={allWatched} />
-              </div>
-              <ul className="flex flex-col divide-y divide-white/5 overflow-hidden rounded-xl border border-white/10 bg-[--color-panel]">
-                {eps.map((ep) => {
-                  const isWatched = watched.has(ep.id);
-                  const future =
-                    ep.airDate && ep.airDate.getTime() > Date.now();
-                  return (
-                    <li key={ep.id} className="flex items-center gap-3 px-3 py-2.5">
-                      <WatchedCheckbox episodeId={ep.id} watched={isWatched} />
-                      <div className="min-w-0 flex-1">
-                        <span className="text-sm">
-                          <span className="text-[--color-muted]">
-                            {epLabel(ep.season, ep.number)}
-                          </span>{" "}
-                          {ep.name}
-                        </span>
-                        {ep.airDate && (
-                          <span
-                            className={
-                              "ml-2 text-xs " +
-                              (future ? "text-amber-300/80" : "text-[--color-muted]")
-                            }
-                          >
-                            {future ? "verwacht " : ""}
-                            {ep.airDate.toLocaleDateString("nl-NL")}
-                          </span>
-                        )}
-                      </div>
-                      {!isWatched && !future && (
-                        <MarkThroughButton tmdbId={tmdbId} episodeId={ep.id} />
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
+            <SeasonSection
+              key={season}
+              tmdbId={tmdbId}
+              season={season}
+              allWatched={watchedCount === eps.length}
+              watchedCount={watchedCount}
+              total={eps.length}
+              eps={eps.map((e) => ({
+                id: e.id,
+                season: e.season,
+                number: e.number,
+                name: e.name,
+                airDate: e.airDate,
+              }))}
+              watchedIds={eps.filter((e) => watched.has(e.id)).map((e) => e.id)}
+            />
           );
         })}
       </div>
