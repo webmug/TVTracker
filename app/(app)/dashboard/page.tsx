@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import type { FollowStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { posterUrl } from "@/lib/tmdb";
@@ -12,23 +13,46 @@ function epLabel(season: number, number: number): string {
 export default async function DashboardPage() {
   const user = await requireUser();
 
-  const follows = await prisma.follow.findMany({
-    where: { userId: user.id, status: { in: ["WATCHING", "PAUSED"] } },
-    include: {
-      show: { include: { episodes: { orderBy: [{ season: "asc" }, { number: "asc" }] } } },
-    },
-  });
+  const now = new Date();
+  const activeStatuses: FollowStatus[] = ["WATCHING", "PAUSED"];
+  const followedShows = {
+    follows: { some: { userId: user.id, status: { in: activeStatuses } } },
+  };
 
-  const watched = new Set(
-    (
-      await prisma.watchedEpisode.findMany({
-        where: { userId: user.id },
-        select: { episodeId: true },
-      })
-    ).map((w) => w.episodeId)
-  );
+  // Alleen de relevante afleveringen laden i.p.v. álle afleveringen van álle
+  // gevolgde series: (1) uitgezonden + nog ongezien, (2) eerstvolgende toekomstige.
+  const [airedUnwatched, future] = await Promise.all([
+    prisma.episode.findMany({
+      where: {
+        show: followedShows,
+        airDate: { lte: now },
+        watched: { none: { userId: user.id } },
+      },
+      orderBy: [{ showId: "asc" }, { season: "asc" }, { number: "asc" }],
+      select: {
+        id: true,
+        season: true,
+        number: true,
+        name: true,
+        airDate: true,
+        showId: true,
+        show: { select: { tmdbId: true, name: true, posterPath: true } },
+      },
+    }),
+    prisma.episode.findMany({
+      where: { show: followedShows, airDate: { gt: now } },
+      orderBy: [{ showId: "asc" }, { season: "asc" }, { number: "asc" }],
+      select: {
+        season: true,
+        number: true,
+        name: true,
+        airDate: true,
+        showId: true,
+        show: { select: { tmdbId: true, name: true } },
+      },
+    }),
+  ]);
 
-  const now = Date.now();
   type Row = {
     tmdbId: number;
     showName: string;
@@ -49,48 +73,53 @@ export default async function DashboardPage() {
     airDate: Date;
   }[] = [];
 
-  for (const f of follows) {
-    const eps = f.show.episodes;
-    // Eerste ongeziene, reeds uitgezonden aflevering.
-    const nextAired = eps.find(
-      (e) => !watched.has(e.id) && e.airDate && e.airDate.getTime() <= now
-    );
-    if (nextAired) {
-      const remaining = eps.filter(
-        (e) => !watched.has(e.id) && e.airDate && e.airDate.getTime() <= now
-      ).length;
-      upNext.push({
-        tmdbId: f.show.tmdbId,
-        showName: f.show.name,
-        posterPath: f.show.posterPath,
-        episodeId: nextAired.id,
-        label: epLabel(nextAired.season, nextAired.number),
-        epName: nextAired.name,
-        airDate: nextAired.airDate,
-        remaining,
-      });
-    }
-    // Eerstvolgende toekomstige aflevering.
-    const nextFuture = eps.find((e) => e.airDate && e.airDate.getTime() > now);
-    if (nextFuture && nextFuture.airDate) {
-      upcoming.push({
-        tmdbId: f.show.tmdbId,
-        showName: f.show.name,
-        label: epLabel(nextFuture.season, nextFuture.number),
-        epName: nextFuture.name,
-        airDate: nextFuture.airDate,
-      });
-    }
+  // Per serie: eerste ongeziene uitgezonden aflevering + resterend aantal.
+  const remainingByShow = new Map<string, number>();
+  for (const e of airedUnwatched) {
+    remainingByShow.set(e.showId, (remainingByShow.get(e.showId) ?? 0) + 1);
+  }
+  const firstAiredSeen = new Set<string>();
+  for (const e of airedUnwatched) {
+    if (firstAiredSeen.has(e.showId)) continue;
+    firstAiredSeen.add(e.showId);
+    upNext.push({
+      tmdbId: e.show.tmdbId,
+      showName: e.show.name,
+      posterPath: e.show.posterPath,
+      episodeId: e.id,
+      label: epLabel(e.season, e.number),
+      epName: e.name,
+      airDate: e.airDate,
+      remaining: remainingByShow.get(e.showId) ?? 1,
+    });
+  }
+
+  // Per serie: eerstvolgende toekomstige aflevering.
+  const firstFutureSeen = new Set<string>();
+  for (const e of future) {
+    if (firstFutureSeen.has(e.showId) || !e.airDate) continue;
+    firstFutureSeen.add(e.showId);
+    upcoming.push({
+      tmdbId: e.show.tmdbId,
+      showName: e.show.name,
+      label: epLabel(e.season, e.number),
+      epName: e.name,
+      airDate: e.airDate,
+    });
   }
 
   upNext.sort((a, b) => (b.airDate?.getTime() ?? 0) - (a.airDate?.getTime() ?? 0));
   upcoming.sort((a, b) => a.airDate.getTime() - b.airDate.getTime());
 
+  const followCount = await prisma.follow.count({
+    where: { userId: user.id, status: { in: ["WATCHING", "PAUSED"] } },
+  });
+
   return (
     <main>
       <h1 className="mb-4 text-xl font-semibold">Up Next</h1>
 
-      {follows.length === 0 && (
+      {followCount === 0 && (
         <div className="rounded-xl border border-white/10 bg-[--color-panel] p-6 text-center">
           <p className="text-[--color-muted]">
             Je volgt nog geen series.{" "}
@@ -150,7 +179,7 @@ export default async function DashboardPage() {
         </ul>
       )}
 
-      {upNext.length === 0 && follows.length > 0 && (
+      {upNext.length === 0 && followCount > 0 && (
         <p className="text-[--color-muted]">
           Helemaal bij! Geen ongeziene uitgezonden afleveringen. 🎉
         </p>

@@ -12,7 +12,7 @@ export function WatchlistCheckButton({ movieId }: { movieId: string }) {
       disabled={pending}
       onClick={() => start(async () => markMovieWatched(movieId))}
       title="Markeer als gezien"
-      className="shrink-0 rounded-lg border border-white/15 px-3 py-2 text-sm text-[--color-muted] hover:text-white disabled:opacity-50"
+      className="shrink-0 rounded-lg bg-black/60 px-2.5 py-1.5 text-xs font-medium text-white backdrop-blur hover:bg-black/80 disabled:opacity-50"
     >
       {pending ? "…" : "✓ Gezien"}
     </button>

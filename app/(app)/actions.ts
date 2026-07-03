@@ -3,7 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
-import { syncShow } from "@/lib/shows";
+import { syncShow, syncMovie } from "@/lib/shows";
+import {
+  getSeriesLibraryPage,
+  getWatchedMoviesPage,
+  type FollowFilter,
+  type SeriesCard,
+  type MovieCard,
+} from "@/lib/library";
 
 // Serie volgen (synct van TMDB indien nodig).
 export async function followShow(tmdbId: number) {
@@ -91,6 +98,37 @@ export async function markWatchedThrough(showTmdbId: number, throughEpisodeId: s
   revalidatePath("/dashboard");
 }
 
+// Film (via TMDB-id, bv. vanuit zoeken of Verken) op de watchlist zetten. Synct
+// eerst de film naar de DB. No-op als hij al gezien is.
+export async function addMovieToWatchlist(tmdbId: number) {
+  const user = await requireUser();
+  const movie = await syncMovie(tmdbId);
+  const alreadyWatched = await prisma.watchedMovie.findUnique({
+    where: { userId_movieId: { userId: user.id, movieId: movie.id } },
+  });
+  if (!alreadyWatched) {
+    await prisma.watchlistMovie.upsert({
+      where: { userId_movieId: { userId: user.id, movieId: movie.id } },
+      create: { userId: user.id, movieId: movie.id },
+      update: {},
+    });
+  }
+  revalidatePath("/movies");
+}
+
+// Film (via TMDB-id) meteen als "gezien" markeren en van de watchlist halen.
+export async function markMovieWatchedByTmdb(tmdbId: number) {
+  const user = await requireUser();
+  const movie = await syncMovie(tmdbId);
+  await prisma.watchedMovie.upsert({
+    where: { userId_movieId: { userId: user.id, movieId: movie.id } },
+    create: { userId: user.id, movieId: movie.id },
+    update: {},
+  });
+  await prisma.watchlistMovie.deleteMany({ where: { userId: user.id, movieId: movie.id } });
+  revalidatePath("/movies");
+}
+
 // Film van de watchlist afvinken: verplaats 'm naar "gezien".
 export async function markMovieWatched(movieId: string) {
   const user = await requireUser();
@@ -124,4 +162,21 @@ export async function toggleSeason(showTmdbId: number, season: number, watched: 
   }
   revalidatePath(`/show/${showTmdbId}`);
   revalidatePath("/dashboard");
+}
+
+// ---------------------------------------------------------------------------
+// Paginatie voor de infinite-scroll grids (aangeroepen vanuit CardGrid).
+// ---------------------------------------------------------------------------
+
+export async function loadMoreSeries(
+  offset: number,
+  filter: FollowFilter = "all"
+): Promise<SeriesCard[]> {
+  const user = await requireUser();
+  return getSeriesLibraryPage(user.id, offset, undefined, filter);
+}
+
+export async function loadMoreWatchedMovies(offset: number): Promise<MovieCard[]> {
+  const user = await requireUser();
+  return getWatchedMoviesPage(user.id, offset);
 }

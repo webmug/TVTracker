@@ -93,6 +93,88 @@ export async function getMovie(tmdbId: number): Promise<TmdbMovieDetails> {
   return tmdb<TmdbMovieDetails>(`/movie/${tmdbId}`);
 }
 
+// ---------------------------------------------------------------------------
+// Verken: trending + aanbevelingen. TMDB levert voor /trending, /recommendations
+// en /similar gemengde/media-specifieke lijsten; we normaliseren naar één vorm.
+// ---------------------------------------------------------------------------
+
+export type MediaKind = "tv" | "movie";
+
+export interface DiscoverItem {
+  kind: MediaKind;
+  id: number;
+  title: string;
+  overview: string;
+  posterPath: string | null;
+  year: string | null;
+}
+
+// Ruwe TMDB-rij (velden verschillen per media-type).
+interface RawMediaResult {
+  id: number;
+  media_type?: string;
+  name?: string;
+  title?: string;
+  overview?: string;
+  poster_path?: string | null;
+  first_air_date?: string | null;
+  release_date?: string | null;
+}
+
+function normalizeMedia(r: RawMediaResult, fallback: MediaKind): DiscoverItem {
+  const kind: MediaKind = r.media_type === "movie" || r.media_type === "tv" ? r.media_type : fallback;
+  const date = kind === "movie" ? r.release_date : r.first_air_date;
+  return {
+    kind,
+    id: r.id,
+    title: (kind === "movie" ? r.title : r.name) ?? r.title ?? r.name ?? "",
+    overview: r.overview ?? "",
+    posterPath: r.poster_path ?? null,
+    year: date ? date.slice(0, 4) : null,
+  };
+}
+
+export async function getTrending(
+  media: MediaKind,
+  window: "day" | "week" = "week"
+): Promise<DiscoverItem[]> {
+  const data = await tmdb<{ results: RawMediaResult[] }>(`/trending/${media}/${window}`);
+  return (data.results ?? []).map((r) => normalizeMedia(r, media)).filter((i) => i.posterPath);
+}
+
+export async function getShowRecommendations(tmdbId: number): Promise<DiscoverItem[]> {
+  const data = await tmdb<{ results: RawMediaResult[] }>(`/tv/${tmdbId}/recommendations`);
+  return (data.results ?? []).map((r) => normalizeMedia(r, "tv")).filter((i) => i.posterPath);
+}
+
+export async function getMovieRecommendations(tmdbId: number): Promise<DiscoverItem[]> {
+  const data = await tmdb<{ results: RawMediaResult[] }>(`/movie/${tmdbId}/recommendations`);
+  return (data.results ?? []).map((r) => normalizeMedia(r, "movie")).filter((i) => i.posterPath);
+}
+
+// Zoekt series én films parallel en normaliseert naar één lijst.
+export async function searchAll(query: string): Promise<DiscoverItem[]> {
+  if (!query.trim()) return [];
+  const [tv, movies] = await Promise.all([searchShows(query), searchMovies(query)]);
+  const shows: DiscoverItem[] = tv.map((r) => ({
+    kind: "tv",
+    id: r.id,
+    title: r.name,
+    overview: r.overview ?? "",
+    posterPath: r.poster_path,
+    year: r.first_air_date ? r.first_air_date.slice(0, 4) : null,
+  }));
+  const films: DiscoverItem[] = movies.map((r) => ({
+    kind: "movie",
+    id: r.id,
+    title: r.title,
+    overview: r.overview ?? "",
+    posterPath: r.poster_path,
+    year: r.release_date ? r.release_date.slice(0, 4) : null,
+  }));
+  return [...shows, ...films];
+}
+
 export async function getSeasonEpisodes(
   tmdbId: number,
   seasonNumber: number
