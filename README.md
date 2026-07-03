@@ -58,8 +58,12 @@ Zodra `RESEND_API_KEY` is gezet, worden links echt gemaild (in dev óók nog gep
 ### Meldingen lokaal testen
 ```bash
 # start de app, dan in een tweede terminal:
-node --env-file=.env scripts/trigger-cron.mjs
+node --env-file=.env scripts/trigger-cron.mjs     # dagelijkse nieuwe-afleveringen-mail
+node --env-file=.env scripts/trigger-weekly.mjs   # wekelijkse vrijdag-samenvatting
 ```
+
+Gebruikers kiezen per mailtype (dagelijks en wekelijks) op **Instellingen** of ze die
+willen ontvangen; beide staan standaard aan.
 
 ---
 
@@ -74,14 +78,20 @@ node --env-file=.env scripts/trigger-cron.mjs
 4. Deploy. De `startCommand` in `railway.json` draait automatisch `prisma migrate deploy`
    vóór het starten.
 
-### Cron-service voor meldingen
-Voeg in hetzelfde Railway-project een **tweede service** toe vanuit dezelfde repo:
-- **Start command:** `node scripts/trigger-cron.mjs`
-- **Variables:** `APP_URL` (publieke URL van de web-service) en `CRON_SECRET` (zelfde waarde).
-- **Cron Schedule** (service-instelling): bijv. `0 8 * * *` voor dagelijks 08:00.
+### Cron-services voor meldingen
+Voeg in hetzelfde Railway-project een **extra service** toe vanuit dezelfde repo (voor de
+wekelijkse mail een tweede). Beide krijgen als **Variables** `APP_URL` (publieke URL van de
+web-service) en `CRON_SECRET` (zelfde waarde):
 
-De cron-service roept het beveiligde endpoint `/api/cron/new-episodes` aan, dat de series
-ververst en per gebruiker een mail stuurt met nieuw uitgezonden afleveringen.
+| Mail | Start command | Cron Schedule | Endpoint |
+| --- | --- | --- | --- |
+| Dagelijks (nieuwe afleveringen) | `node scripts/trigger-cron.mjs` | `0 8 * * *` (dagelijks 08:00) | `/api/cron/new-episodes` |
+| Wekelijks (vrijdag-samenvatting) | `node scripts/trigger-weekly.mjs` | `0 9 * * 5` (vrijdag 09:00) | `/api/cron/weekly-digest` |
+
+De services roepen het beveiligde endpoint aan (`Authorization: Bearer $CRON_SECRET`), dat de
+gevolgde series ververst en per gebruiker een mail stuurt — de dagelijkse bij elke nieuw
+uitgezonden aflevering, de wekelijkse als samenvatting van de afgelopen 7 dagen. Beide
+respecteren de voorkeur per gebruiker (Instellingen).
 
 ---
 
@@ -97,13 +107,13 @@ export aan, dan stemmen we de kolomherkenning in `lib/import/tvtime.ts` daarop a
 
 ## Structuur
 ```
-app/(app)/          Beveiligde pagina's: dashboard, search, show, import, admin/invites
+app/(app)/          Beveiligde pagina's: dashboard, search, show, import, settings, admin/invites
 app/login/          Magic-link login
-app/api/            auth, import, cron/new-episodes
+app/api/            auth, import, cron/new-episodes, cron/weekly-digest
 lib/tmdb.ts         TMDB-client
 lib/shows.ts        Serie + afleveringen syncen naar DB
-lib/notify.ts       Nieuwe-afleveringen check + mail
+lib/notify.ts       Nieuwe-afleveringen check + mail (dagelijks + wekelijkse digest)
 lib/import/tvtime.ts  Adaptieve TV Time ZIP/CSV-importer
 prisma/schema.prisma  Datamodel
-scripts/trigger-cron.mjs  Railway Cron-trigger
+scripts/trigger-cron.mjs / trigger-weekly.mjs  Railway Cron-triggers
 ```
