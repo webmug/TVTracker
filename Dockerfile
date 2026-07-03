@@ -22,6 +22,7 @@ RUN npm run build
 
 EXPOSE 3000
 
-# Op Railway wordt dit overschreven door deploy.startCommand (incl. migraties);
-# lokaal / elders is dit de fallback.
-CMD ["npm", "run", "start"]
+# Migraties + next start via een expliciet script (zie start.sh). Bewust geen
+# `a && b`-startCommand in railway.json: die keten liep op Railway niet door
+# naar next start.
+CMD ["sh", "start.sh"]
