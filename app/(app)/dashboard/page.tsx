@@ -1,7 +1,9 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { FollowStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
+import { posterUrl } from "@/lib/tmdb";
 import { WatchedCheckbox } from "@/app/(app)/_components/WatchedCheckbox";
 import { PosterCard } from "@/app/(app)/_components/PosterCard";
 
@@ -47,7 +49,7 @@ export default async function DashboardPage() {
         name: true,
         airDate: true,
         showId: true,
-        show: { select: { tmdbId: true, name: true } },
+        show: { select: { tmdbId: true, name: true, posterPath: true } },
       },
     }),
   ]);
@@ -67,6 +69,7 @@ export default async function DashboardPage() {
   const upcoming: {
     tmdbId: number;
     showName: string;
+    posterPath: string | null;
     label: string;
     epName: string | null;
     airDate: Date;
@@ -101,6 +104,7 @@ export default async function DashboardPage() {
     upcoming.push({
       tmdbId: e.show.tmdbId,
       showName: e.show.name,
+      posterPath: e.show.posterPath,
       label: epLabel(e.season, e.number),
       epName: e.name,
       airDate: e.airDate,
@@ -169,22 +173,46 @@ export default async function DashboardPage() {
           <aside className="mt-10 lg:mt-0">
             <h2 className="mb-3 text-lg font-medium">Binnenkort</h2>
             <ul className="flex flex-col gap-2">
-              {upcoming.map((u) => (
-                <li
-                  key={`${u.tmdbId}-${u.label}`}
-                  className="flex items-center gap-3 rounded-lg border border-white/10 bg-[--color-panel] px-3 py-2 text-sm"
-                >
-                  <span className="w-24 shrink-0 text-[--color-muted]">
-                    {u.airDate.toLocaleDateString("nl-NL", { day: "numeric", month: "short" })}
-                  </span>
-                  <Link href={`/show/${u.tmdbId}`} className="font-medium hover:underline">
-                    {u.showName}
-                  </Link>
-                  <span className="text-[--color-muted]">
-                    {u.label} {u.epName}
-                  </span>
-                </li>
-              ))}
+              {upcoming.map((u) => {
+                const poster = posterUrl(u.posterPath, "w92");
+                return (
+                  <li
+                    key={`${u.tmdbId}-${u.label}`}
+                    className="flex items-center gap-3 rounded-lg border border-white/10 bg-[--color-panel] p-2"
+                  >
+                    <Link href={`/show/${u.tmdbId}`} className="shrink-0">
+                      {poster ? (
+                        <Image
+                          src={poster}
+                          alt={u.showName}
+                          width={40}
+                          height={60}
+                          className="h-15 w-10 rounded object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-15 w-10 items-center justify-center rounded bg-[--color-panel2] text-sm">
+                          📺
+                        </div>
+                      )}
+                    </Link>
+                    <div className="min-w-0 flex-1">
+                      <Link
+                        href={`/show/${u.tmdbId}`}
+                        className="block truncate text-sm font-medium hover:underline"
+                      >
+                        {u.showName}
+                      </Link>
+                      <p className="truncate text-xs text-[--color-muted]">
+                        {u.label}
+                        {u.epName ? ` · ${u.epName}` : ""}
+                      </p>
+                      <p className="text-xs text-[--color-muted]">
+                        {u.airDate.toLocaleDateString("nl-NL", { day: "numeric", month: "short" })}
+                      </p>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           </aside>
         )}

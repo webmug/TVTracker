@@ -60,6 +60,22 @@ export default async function AppLayout({
         </form>
       </header>
       {children}
+      <footer className="mt-16 border-t border-white/10 pt-6 text-xs text-[--color-muted]">
+        <a
+          href="https://www.themoviedb.org/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 hover:text-white"
+        >
+          {/* Verplichte TMDB-bronvermelding; klein embleem, plain <img> zodat
+              w-auto op de SVG de juiste verhouding houdt. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/tmdb.svg" alt="TMDB" className="h-4 w-auto" />
+          <span>
+            This product uses the TMDB API but is not endorsed or certified by TMDB.
+          </span>
+        </a>
+      </footer>
     </WidthContainer>
   );
 }
