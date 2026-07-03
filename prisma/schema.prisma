@@ -25,6 +25,7 @@ model User {
   follows         Follow[]
   watchedEpisodes WatchedEpisode[]
   watchedMovies   WatchedMovie[]
+  watchlistMovies WatchlistMovie[]
   invitesSent     Invite[]         @relation("InvitedBy")
 }
 
@@ -165,7 +166,8 @@ model Movie {
   releaseDate  DateTime?
   lastSyncedAt DateTime  @default(now())
 
-  watched WatchedMovie[]
+  watched   WatchedMovie[]
+  watchlist WatchlistMovie[]
 }
 
 model WatchedMovie {
@@ -173,6 +175,21 @@ model WatchedMovie {
   userId    String
   movieId   String
   watchedAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movie Movie @relation(fields: [movieId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, movieId])
+  @@index([userId])
+}
+
+// Films die de gebruiker nog wil zien (TV Time's "towatch"). Losstaand van
+// WatchedMovie: zodra een film gezien is, hoort hij daar thuis.
+model WatchlistMovie {
+  id      String   @id @default(cuid())
+  userId  String
+  movieId String
+  addedAt DateTime @default(now())
 
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   movie Movie @relation(fields: [movieId], references: [id], onDelete: Cascade)

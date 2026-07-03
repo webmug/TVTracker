@@ -13,12 +13,16 @@ export interface WatchedRow {
   watchedAt: Date | null;
 }
 
-// Eén geziene film uit de TV Time-export.
+// Eén film uit de TV Time-export: gezien of nog-te-zien (watchlist).
 export interface MovieRow {
   title: string | null;
   tmdbMovieId: number | null;
-  watchedAt: Date | null;
+  status: MovieStatus;
+  // Datum: kijkdatum bij "watched", toevoegdatum bij "watchlist".
+  date: Date | null;
 }
+
+export type MovieStatus = "watched" | "watchlist";
 
 export interface ParseResult {
   rows: WatchedRow[];
@@ -102,14 +106,35 @@ function detectMovieMapping(headers: string[]) {
       "date",
       "timestamp",
     ]),
+    // TV Time zet series én films in één trackingbestand; deze kolommen bepalen
+    // of een rij een film is en of hij daadwerkelijk gezien is.
+    entityType: pick(headers, ["entitytype"]),
+    type: pick(headers, ["type"]),
   };
 }
 
-// Ziet dit CSV-bestand eruit als een film-bestand? TV Time zet films in een aparte
-// export (bv. movie/film in de bestandsnaam); we vereisen ook een titelkolom.
-function looksLikeMovieFile(path: string, title: string | null): boolean {
-  if (!title) return false;
-  return /movie|film/i.test(path);
+// Ziet dit CSV-bestand eruit als een film-bestand? We herkennen het aan de
+// bestandsnaam (movie/film) óf aan een film-titelkolom (bv. TV Time's
+// `movie_name`) / een `entity_type`-kolom. Een titelkolom is altijd vereist.
+function looksLikeMovieFile(
+  path: string,
+  mmap: ReturnType<typeof detectMovieMapping>
+): boolean {
+  if (!mmap.title) return false;
+  if (/movie|film/i.test(path)) return true;
+  if (mmap.entityType) return true;
+  return mmap.title !== null && /^(movie|film)/.test(norm(mmap.title));
+}
+
+// Classificeer een film-tracking-rij op basis van TV Time's `type`-kolom:
+// `watch`/`rewatch` = gezien, `towatch` = watchlist, `follow`/overig = negeren.
+// Zonder type-kolom (andere export-vormen) nemen we de rij als gezien aan.
+function classifyMovieRow(v: string | null | undefined, hasTypeColumn: boolean): MovieStatus | null {
+  if (!hasTypeColumn) return "watched";
+  const n = norm(String(v ?? ""));
+  if (n === "watch" || n.startsWith("rewatch")) return "watched";
+  if (n === "towatch") return "watchlist";
+  return null;
 }
 
 // Parse een TV Time export-ZIP (buffer) naar afgevinkte afleveringen + geziene films.
@@ -168,11 +193,23 @@ export async function parseTvTimeZip(buffer: Buffer): Promise<ParseResult> {
       continue;
     }
 
-    // Anders: film-bestand? (geen season/episode, wel movie/film in de naam + titel)
+    // Anders: film-bestand? (geen season/episode, wel movie/film in de naam of
+    // een film-titelkolom/entity_type)
     const mmap = detectMovieMapping(headers);
-    if (looksLikeMovieFile(path, mmap.title)) {
+    if (looksLikeMovieFile(path, mmap)) {
       let added = 0;
       for (const rec of records) {
+        // Sla niet-film-rijen over als er een entity_type-kolom is (het
+        // trackingbestand bevat ook series-records).
+        if (mmap.entityType) {
+          const et = norm(String(rec[mmap.entityType] ?? ""));
+          if (et && et !== "movie") continue;
+        }
+        // Bepaal of de film gezien is of op de watchlist staat; losse follows
+        // (en overige types) overslaan.
+        const status = classifyMovieRow(mmap.type ? rec[mmap.type] : null, Boolean(mmap.type));
+        if (!status) continue;
+
         const title = mmap.title ? String(rec[mmap.title] ?? "").trim() || null : null;
         const tmdbMovieId = mmap.tmdbMovieId ? toInt(rec[mmap.tmdbMovieId]) : null;
         if (!title && tmdbMovieId === null) continue;
@@ -180,7 +217,8 @@ export async function parseTvTimeZip(buffer: Buffer): Promise<ParseResult> {
         result.movies.push({
           title,
           tmdbMovieId,
-          watchedAt: mmap.watchedAt ? parseDate(rec[mmap.watchedAt]) : null,
+          status,
+          date: mmap.watchedAt ? parseDate(rec[mmap.watchedAt]) : null,
         });
         added++;
       }
@@ -322,10 +360,12 @@ export interface MovieGroup {
   key: string;
   title: string | null;
   tmdbMovieId: number | null;
-  watchedAt: Date | null;
+  status: MovieStatus;
+  date: Date | null;
 }
 
-// Ontdubbel films op tmdb-id of (anders) titel; bewaar de vroegste kijkdatum.
+// Ontdubbel films op tmdb-id of (anders) titel; bewaar de vroegste datum.
+// Een film die zowel gezien is als op de watchlist staat telt als gezien.
 export function groupByMovie(rows: MovieRow[]): MovieGroup[] {
   const map = new Map<string, MovieGroup>();
   for (const r of rows) {
@@ -335,11 +375,13 @@ export function groupByMovie(rows: MovieRow[]): MovieGroup[] {
     if (!key || key === "title:") continue;
     let g = map.get(key);
     if (!g) {
-      g = { key, title: r.title, tmdbMovieId: r.tmdbMovieId, watchedAt: r.watchedAt };
+      g = { key, title: r.title, tmdbMovieId: r.tmdbMovieId, status: r.status, date: r.date };
       map.set(key, g);
     }
     if (!g.title && r.title) g.title = r.title;
-    if (r.watchedAt && (!g.watchedAt || r.watchedAt < g.watchedAt)) g.watchedAt = r.watchedAt;
+    // "watched" wint van "watchlist".
+    if (r.status === "watched") g.status = "watched";
+    if (r.date && (!g.date || r.date < g.date)) g.date = r.date;
   }
   return [...map.values()];
 }
@@ -349,9 +391,16 @@ export interface MovieMatchReport {
     title: string | null;
     matchedTmdbId: number | null;
     matchedName: string | null;
+    status: MovieStatus;
     confidence: "id" | "name" | "none";
   }[];
-  totals: { movies: number; matched: number; unmatched: number };
+  totals: {
+    movies: number;
+    matched: number;
+    unmatched: number;
+    watched: number;
+    watchlist: number;
+  };
 }
 
 // Resolve een film naar een TMDB-id (id-hint eerst, anders titel-zoektocht).
@@ -386,7 +435,13 @@ export async function runMovieImport(
   const groups = groupByMovie(rows);
   const report: MovieMatchReport = {
     movies: [],
-    totals: { movies: groups.length, matched: 0, unmatched: 0 },
+    totals: {
+      movies: groups.length,
+      matched: 0,
+      unmatched: 0,
+      watched: groups.filter((g) => g.status === "watched").length,
+      watchlist: groups.filter((g) => g.status === "watchlist").length,
+    },
   };
 
   for (const g of groups) {
@@ -395,6 +450,7 @@ export async function runMovieImport(
       title: g.title,
       matchedTmdbId: resolved.tmdbId,
       matchedName: resolved.name,
+      status: g.status,
       confidence: resolved.confidence,
     });
 
@@ -407,11 +463,27 @@ export async function runMovieImport(
     if (opts.dryRun) continue;
 
     const movie = await syncMovie(resolved.tmdbId);
-    await prisma.watchedMovie.upsert({
-      where: { userId_movieId: { userId, movieId: movie.id } },
-      create: { userId, movieId: movie.id, watchedAt: g.watchedAt ?? new Date() },
-      update: {},
-    });
+    if (g.status === "watched") {
+      // Zeker weten dat een geziene film niet óók op de watchlist blijft staan.
+      await prisma.watchlistMovie.deleteMany({ where: { userId, movieId: movie.id } });
+      await prisma.watchedMovie.upsert({
+        where: { userId_movieId: { userId, movieId: movie.id } },
+        create: { userId, movieId: movie.id, watchedAt: g.date ?? new Date() },
+        update: {},
+      });
+    } else {
+      // Op de watchlist zetten, tenzij de film al als gezien geregistreerd staat.
+      const seen = await prisma.watchedMovie.findUnique({
+        where: { userId_movieId: { userId, movieId: movie.id } },
+      });
+      if (!seen) {
+        await prisma.watchlistMovie.upsert({
+          where: { userId_movieId: { userId, movieId: movie.id } },
+          create: { userId, movieId: movie.id, addedAt: g.date ?? new Date() },
+          update: {},
+        });
+      }
+    }
   }
 
   return report;

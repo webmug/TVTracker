@@ -13,6 +13,7 @@ interface ReportMovie {
   title: string | null;
   matchedTmdbId: number | null;
   matchedName: string | null;
+  status: "watched" | "watchlist";
   confidence: "id" | "name" | "none";
 }
 interface ApiResult {
@@ -25,7 +26,13 @@ interface ApiResult {
   };
   movieReport: {
     movies: ReportMovie[];
-    totals: { movies: number; matched: number; unmatched: number };
+    totals: {
+      movies: number;
+      matched: number;
+      unmatched: number;
+      watched: number;
+      watchlist: number;
+    };
   };
 }
 
@@ -183,9 +190,11 @@ export default function ImportPage() {
 
           {m && m.movies > 0 && (
             <>
-              <div className="mt-8 grid grid-cols-2 gap-3 text-center">
+              <div className="mt-8 grid grid-cols-4 gap-3 text-center">
                 <Stat label="Films" value={m.movies} />
-                <Stat label="Films herkend" value={m.matched} />
+                <Stat label="Gezien" value={m.watched} />
+                <Stat label="Watchlist" value={m.watchlist} />
+                <Stat label="Herkend" value={m.matched} />
               </div>
 
               {m.unmatched > 0 && (
@@ -208,6 +217,9 @@ export default function ImportPage() {
                       {mv.matchedName && mv.matchedName !== mv.title && (
                         <span className="text-[--color-muted]"> → {mv.matchedName}</span>
                       )}
+                    </span>
+                    <span className="text-[--color-muted]">
+                      {mv.status === "watchlist" ? "watchlist" : "gezien"}
                     </span>
                     <span
                       className={

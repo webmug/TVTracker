@@ -91,6 +91,18 @@ export async function markWatchedThrough(showTmdbId: number, throughEpisodeId: s
   revalidatePath("/dashboard");
 }
 
+// Film van de watchlist afvinken: verplaats 'm naar "gezien".
+export async function markMovieWatched(movieId: string) {
+  const user = await requireUser();
+  await prisma.watchedMovie.upsert({
+    where: { userId_movieId: { userId: user.id, movieId } },
+    create: { userId: user.id, movieId },
+    update: {},
+  });
+  await prisma.watchlistMovie.deleteMany({ where: { userId: user.id, movieId } });
+  revalidatePath("/movies");
+}
+
 // Hele seizoen aan/uit vinken.
 export async function toggleSeason(showTmdbId: number, season: number, watched: boolean) {
   const user = await requireUser();

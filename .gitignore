@@ -10,3 +10,8 @@ next-env.d.ts.timestamp
 *.tsbuildinfo
 /prisma/*.db
 /uploads
+
+# lokale GDPR-export (nooit committen)
+gdpr-data.zip
+*.zip
+scratch_gdpr/
