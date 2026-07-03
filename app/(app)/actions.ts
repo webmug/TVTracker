@@ -168,6 +168,29 @@ export async function toggleSeason(showTmdbId: number, season: number, watched: 
   revalidatePath("/dashboard");
 }
 
+// Alle seizoenen (de hele serie) in één keer aan/uit vinken.
+export async function toggleAllSeasons(showTmdbId: number, watched: boolean) {
+  const user = await requireUser();
+  const show = await prisma.show.findUnique({ where: { tmdbId: showTmdbId } });
+  if (!show) return;
+  const episodes = await prisma.episode.findMany({
+    where: { showId: show.id },
+    select: { id: true },
+  });
+  if (watched) {
+    await prisma.watchedEpisode.createMany({
+      data: episodes.map((e) => ({ userId: user.id, episodeId: e.id })),
+      skipDuplicates: true,
+    });
+  } else {
+    await prisma.watchedEpisode.deleteMany({
+      where: { userId: user.id, episodeId: { in: episodes.map((e) => e.id) } },
+    });
+  }
+  revalidatePath(`/show/${showTmdbId}`);
+  revalidatePath("/dashboard");
+}
+
 // ---------------------------------------------------------------------------
 // Paginatie voor de infinite-scroll grids (aangeroepen vanuit CardGrid).
 // ---------------------------------------------------------------------------

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth, signOut } from "@/lib/auth";
+import { WidthContainer } from "@/app/(app)/_components/WidthContainer";
 
 export default async function AppLayout({
   children,
@@ -12,7 +13,7 @@ export default async function AppLayout({
   const isAdmin = session.user.role === "ADMIN";
 
   return (
-    <div className="mx-auto max-w-3xl px-4 pb-24">
+    <WidthContainer>
       <header className="sticky top-0 z-10 -mx-4 mb-6 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-white/10 bg-[--color-ink]/90 px-4 py-3 backdrop-blur">
         <Link href="/dashboard" className="font-semibold">
           📺 TV Tracker
@@ -59,6 +60,6 @@ export default async function AppLayout({
         </form>
       </header>
       {children}
-    </div>
+    </WidthContainer>
   );
 }
