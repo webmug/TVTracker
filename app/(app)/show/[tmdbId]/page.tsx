@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/session";
 import { syncShow } from "@/lib/shows";
 import { posterUrl } from "@/lib/tmdb";
 import { FollowButton } from "@/app/(app)/_components/FollowButton";
+import { ExternalLinks } from "@/app/(app)/_components/ExternalLinks";
 import { WatchedCheckbox } from "@/app/(app)/_components/WatchedCheckbox";
 import { SeasonActions } from "@/app/(app)/_components/SeasonActions";
 import { MarkThroughButton } from "@/app/(app)/_components/MarkThroughButton";
@@ -83,8 +84,9 @@ export default async function ShowPage({
           <p className="mt-2 line-clamp-4 text-sm text-[--color-muted]">
             {show.overview}
           </p>
-          <div className="mt-3">
+          <div className="mt-3 flex flex-wrap items-center gap-4">
             <FollowButton tmdbId={tmdbId} following={Boolean(follow)} />
+            <ExternalLinks imdbId={show.imdbId} tmdbId={show.tmdbId} kind="tv" />
           </div>
         </div>
       </div>

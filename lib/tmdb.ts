@@ -44,6 +44,8 @@ export interface TmdbShowDetails {
   first_air_date: string | null;
   number_of_seasons: number;
   seasons: { season_number: number; episode_count: number }[];
+  // Via append_to_response=external_ids; imdb_id bv. "tt1234567".
+  external_ids?: { imdb_id: string | null };
 }
 
 export interface TmdbEpisode {
@@ -65,7 +67,7 @@ export async function searchShows(query: string): Promise<TmdbSearchResult[]> {
 }
 
 export async function getShow(tmdbId: number): Promise<TmdbShowDetails> {
-  return tmdb<TmdbShowDetails>(`/tv/${tmdbId}`);
+  return tmdb<TmdbShowDetails>(`/tv/${tmdbId}`, { append_to_response: "external_ids" });
 }
 
 export interface TmdbMovieResult {
@@ -78,6 +80,8 @@ export interface TmdbMovieResult {
 
 export interface TmdbMovieDetails extends TmdbMovieResult {
   status: string | null;
+  // /movie/{id} levert imdb_id direct mee (bv. "tt1234567").
+  imdb_id?: string | null;
 }
 
 export async function searchMovies(query: string): Promise<TmdbMovieResult[]> {

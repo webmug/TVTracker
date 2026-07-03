@@ -7,6 +7,7 @@ import { posterUrl } from "@/lib/tmdb";
 // - `href`   : maakt de poster klikbaar naar de detailpagina.
 // - `badge`  : kleine overlay linksboven (bv. voortgang).
 // - `action` : overlay rechtsonder (bv. volg-/watchlist-knop).
+// - `links`  : optioneel rijtje onder de titel (bv. externe links naar IMDb/TMDB).
 export function PosterCard({
   posterPath,
   title,
@@ -15,6 +16,7 @@ export function PosterCard({
   fallbackEmoji = "📺",
   badge,
   action,
+  links,
 }: {
   posterPath: string | null;
   title: string;
@@ -23,6 +25,7 @@ export function PosterCard({
   fallbackEmoji?: string;
   badge?: ReactNode;
   action?: ReactNode;
+  links?: ReactNode;
 }) {
   const poster = posterUrl(posterPath, "w342");
 
@@ -66,6 +69,7 @@ export function PosterCard({
           )}
         </p>
         {subtitle && <p className="truncate text-xs text-[--color-muted]">{subtitle}</p>}
+        {links != null && <div className="mt-1">{links}</div>}
       </div>
     </div>
   );

@@ -78,6 +78,7 @@ export async function getSeriesLibraryPage(
 export interface MovieCard {
   id: string;
   tmdbId: number;
+  imdbId: string | null;
   title: string;
   posterPath: string | null;
   year: number | null;
@@ -89,7 +90,7 @@ export async function getWatchlistMovies(userId: string): Promise<MovieCard[]> {
     orderBy: { addedAt: "desc" },
     select: {
       movie: {
-        select: { id: true, tmdbId: true, title: true, posterPath: true, releaseDate: true },
+        select: { id: true, tmdbId: true, imdbId: true, title: true, posterPath: true, releaseDate: true },
       },
     },
   });
@@ -108,7 +109,7 @@ export async function getWatchedMoviesPage(
     take,
     select: {
       movie: {
-        select: { id: true, tmdbId: true, title: true, posterPath: true, releaseDate: true },
+        select: { id: true, tmdbId: true, imdbId: true, title: true, posterPath: true, releaseDate: true },
       },
     },
   });
@@ -118,6 +119,7 @@ export async function getWatchedMoviesPage(
 function toMovieCard(m: {
   id: string;
   tmdbId: number;
+  imdbId: string | null;
   title: string;
   posterPath: string | null;
   releaseDate: Date | null;
@@ -125,6 +127,7 @@ function toMovieCard(m: {
   return {
     id: m.id,
     tmdbId: m.tmdbId,
+    imdbId: m.imdbId,
     title: m.title,
     posterPath: m.posterPath,
     year: m.releaseDate?.getFullYear() ?? null,
