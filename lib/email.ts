@@ -37,13 +37,9 @@ export interface NewEpisodeMail {
   episodes: { label: string; name: string | null; airDate: Date | null }[];
 }
 
-export async function sendNewEpisodesEmail(
-  to: string,
-  shows: NewEpisodeMail[],
-  appUrl: string
-): Promise<void> {
-  if (!resend) throw new Error("RESEND_API_KEY ontbreekt.");
-  const rows = shows
+// Bouwt de per-serie afleveringenlijst; gedeeld door de dagelijkse en wekelijkse mail.
+function episodeRows(shows: NewEpisodeMail[]): string {
+  return shows
     .map(
       (s) => `<div style="margin:0 0 16px">
         <strong>${s.showName}</strong>
@@ -62,14 +58,43 @@ export async function sendNewEpisodesEmail(
       </div>`
     )
     .join("");
+}
 
+export async function sendNewEpisodesEmail(
+  to: string,
+  shows: NewEpisodeMail[],
+  appUrl: string
+): Promise<void> {
+  if (!resend) throw new Error("RESEND_API_KEY ontbreekt.");
   await resend.emails.send({
     from: FROM,
     to,
     subject: "Nieuwe afleveringen van jouw series",
     html: wrap(
       "Er zijn nieuwe afleveringen! 📺",
-      `${rows}
+      `${episodeRows(shows)}
+       <p style="margin:24px 0 0">
+         <a href="${appUrl}" style="background:#5b8cff;color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;display:inline-block">Bekijk in TV Tracker</a>
+       </p>`
+    ),
+  });
+}
+
+// Wekelijkse vrijdag-samenvatting van alles wat deze week nieuw is uitgezonden.
+export async function sendWeeklyDigestEmail(
+  to: string,
+  shows: NewEpisodeMail[],
+  appUrl: string
+): Promise<void> {
+  if (!resend) throw new Error("RESEND_API_KEY ontbreekt.");
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: "Je wekelijkse serie-update 📺",
+    html: wrap(
+      "Deze week nieuw uitgezonden",
+      `<p style="color:#c6cbe0;margin:0 0 16px">Dit is er de afgelopen week bijgekomen bij de series die je volgt.</p>
+       ${episodeRows(shows)}
        <p style="margin:24px 0 0">
          <a href="${appUrl}" style="background:#5b8cff;color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;display:inline-block">Bekijk in TV Tracker</a>
        </p>`

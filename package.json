@@ -10,7 +10,9 @@
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:push": "prisma db push",
-    "cron:trigger": "node scripts/trigger-cron.mjs"
+    "cron:trigger": "node scripts/trigger-cron.mjs",
+    "cron:weekly": "node scripts/trigger-weekly.mjs",
+    "seed:dev": "node --env-file=.env scripts/seed-dev.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.7.4",
