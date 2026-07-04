@@ -18,7 +18,11 @@ export function FollowButton({
   return (
     <button
       disabled={pending}
-      onClick={() =>
+      onClick={(e) => {
+        // Knop kan als overlay binnen een kaart-<Link> zitten (Verken/Zoeken);
+        // voorkom dat de klik doorbubbelt en naar de detailpagina navigeert.
+        e.preventDefault();
+        e.stopPropagation();
         start(async () => {
           const next = !followed;
           setFollowed(next);
@@ -28,8 +32,8 @@ export function FollowButton({
           } catch {
             setFollowed(!next); // terugdraaien bij fout
           }
-        })
-      }
+        });
+      }}
       className={
         followed
           ? "rounded-lg border border-white/15 px-4 py-2 text-sm text-[--color-muted] hover:text-white disabled:opacity-50"

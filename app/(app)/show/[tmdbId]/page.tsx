@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
@@ -85,6 +86,12 @@ export default async function ShowPage({
             {total > 0 && (
               <ShowSeasonsToggle tmdbId={tmdbId} allWatched={allWatched} />
             )}
+            <Link
+              href={`/similar/tv/${tmdbId}`}
+              className="rounded-lg border border-white/15 px-4 py-2 text-sm text-[--color-muted] hover:text-white"
+            >
+              Soortgelijke series
+            </Link>
             <ExternalLinks imdbId={show.imdbId} tmdbId={show.tmdbId} kind="tv" />
           </div>
         </div>

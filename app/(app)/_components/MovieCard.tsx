@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { posterUrl } from "@/lib/tmdb";
 import { MovieActionButton } from "@/app/(app)/_components/MovieActionButton";
 
@@ -98,6 +99,12 @@ export function MovieCard({
               </p>
               <div className="flex flex-wrap items-center gap-3">
                 <MovieActionButton tmdbId={tmdbId} />
+                <Link
+                  href={`/similar/movie/${tmdbId}`}
+                  className="text-xs text-[--color-muted] underline decoration-white/20 hover:text-white"
+                >
+                  Soortgelijke films
+                </Link>
                 <a
                   href={`https://www.themoviedb.org/movie/${tmdbId}`}
                   target="_blank"

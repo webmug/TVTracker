@@ -17,7 +17,13 @@ export function WatchedCheckbox({
       disabled={pending}
       aria-pressed={watched}
       title={watched ? "Gezien — klik om terug te zetten" : "Markeer als gezien"}
-      onClick={() => start(async () => toggleWatched(episodeId, !watched))}
+      onClick={(e) => {
+        // Knop zit als overlay binnen de kaart-<Link>; voorkom dat de klik
+        // doorbubbelt en naar de detailpagina navigeert.
+        e.preventDefault();
+        e.stopPropagation();
+        start(async () => toggleWatched(episodeId, !watched));
+      }}
       className={
         "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-sm transition disabled:opacity-50 " +
         (watched
