@@ -1,8 +1,7 @@
 "use client";
 
 import { InfiniteGrid } from "@/app/(app)/_components/InfiniteGrid";
-import { PosterCard } from "@/app/(app)/_components/PosterCard";
-import { ExternalLinks } from "@/app/(app)/_components/ExternalLinks";
+import { MovieCard as MovieCardTile } from "@/app/(app)/_components/MovieCard";
 import { loadMoreWatchedMovies } from "@/app/(app)/actions";
 import type { MovieCard } from "@/lib/library";
 
@@ -20,12 +19,14 @@ export function WatchedMoviesGrid({
       loadMore={(offset) => loadMoreWatchedMovies(offset)}
       itemKey={(m) => m.id}
       renderItem={(m) => (
-        <PosterCard
-          posterPath={m.posterPath}
+        <MovieCardTile
+          tmdbId={m.tmdbId}
           title={m.title}
-          subtitle={m.year ? String(m.year) : null}
-          fallbackEmoji="🎬"
-          links={<ExternalLinks imdbId={m.imdbId} tmdbId={m.tmdbId} kind="movie" />}
+          year={m.year ? String(m.year) : null}
+          overview={m.overview}
+          posterPath={m.posterPath}
+          imdbId={m.imdbId}
+          initialState="watched"
         />
       )}
     />

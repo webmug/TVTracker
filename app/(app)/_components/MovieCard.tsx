@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { posterUrl } from "@/lib/tmdb";
 import { MovieActionButton } from "@/app/(app)/_components/MovieActionButton";
+import { ExternalLinks } from "@/app/(app)/_components/ExternalLinks";
 
 // Filmkaart voor Verken. Films hebben geen eigen detailpagina, dus de poster opent
 // een modal met de samenvatting en extra details. De actie-knoppen (watchlist/gezien)
@@ -15,12 +16,16 @@ export function MovieCard({
   year,
   overview,
   posterPath,
+  imdbId,
+  initialState = "none",
 }: {
   tmdbId: number;
   title: string;
   year: string | null;
   overview: string;
   posterPath: string | null;
+  imdbId?: string | null;
+  initialState?: "none" | "watchlist" | "watched";
 }) {
   const [open, setOpen] = useState(false);
   const poster = posterUrl(posterPath, "w342");
@@ -48,7 +53,7 @@ export function MovieCard({
           )}
         </button>
         <div className="absolute bottom-1.5 right-1.5">
-          <MovieActionButton tmdbId={tmdbId} compact />
+          <MovieActionButton tmdbId={tmdbId} initial={initialState} compact />
         </div>
       </div>
 
@@ -98,21 +103,14 @@ export function MovieCard({
                 {overview || "Geen samenvatting beschikbaar."}
               </p>
               <div className="flex flex-wrap items-center gap-3">
-                <MovieActionButton tmdbId={tmdbId} />
+                <MovieActionButton tmdbId={tmdbId} initial={initialState} />
                 <Link
                   href={`/similar/movie/${tmdbId}`}
                   className="text-xs text-[--color-muted] underline decoration-white/20 hover:text-white"
                 >
                   Soortgelijke films
                 </Link>
-                <a
-                  href={`https://www.themoviedb.org/movie/${tmdbId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-[--color-muted] underline decoration-white/20 hover:text-white"
-                >
-                  TMDB
-                </a>
+                <ExternalLinks imdbId={imdbId} tmdbId={tmdbId} kind="movie" />
               </div>
             </div>
           </div>

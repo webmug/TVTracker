@@ -119,6 +119,7 @@ export interface MovieCard {
   tmdbId: number;
   imdbId: string | null;
   title: string;
+  overview: string;
   posterPath: string | null;
   year: number | null;
 }
@@ -129,7 +130,7 @@ export async function getWatchlistMovies(userId: string): Promise<MovieCard[]> {
     orderBy: { addedAt: "desc" },
     select: {
       movie: {
-        select: { id: true, tmdbId: true, imdbId: true, title: true, posterPath: true, releaseDate: true },
+        select: { id: true, tmdbId: true, imdbId: true, title: true, overview: true, posterPath: true, releaseDate: true },
       },
     },
   });
@@ -148,7 +149,7 @@ export async function getWatchedMoviesPage(
     take,
     select: {
       movie: {
-        select: { id: true, tmdbId: true, imdbId: true, title: true, posterPath: true, releaseDate: true },
+        select: { id: true, tmdbId: true, imdbId: true, title: true, overview: true, posterPath: true, releaseDate: true },
       },
     },
   });
@@ -160,6 +161,7 @@ function toMovieCard(m: {
   tmdbId: number;
   imdbId: string | null;
   title: string;
+  overview: string | null;
   posterPath: string | null;
   releaseDate: Date | null;
 }): MovieCard {
@@ -168,6 +170,7 @@ function toMovieCard(m: {
     tmdbId: m.tmdbId,
     imdbId: m.imdbId,
     title: m.title,
+    overview: m.overview ?? "",
     posterPath: m.posterPath,
     year: m.releaseDate?.getFullYear() ?? null,
   };
