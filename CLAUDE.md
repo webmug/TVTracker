@@ -38,6 +38,9 @@ TMDB metadata · deployed on Railway. See `README.md` for setup, local dev, and 
 - `lib/tmdb.ts`, `lib/shows.ts` — TMDB client + syncing shows/episodes to the DB.
 - `lib/library.ts` — paginated series/film library queries for the card grids.
 - `lib/notify.ts` — new-episode detection + e-mail.
+- `lib/scheduler.ts` — in-process `node-cron` scheduler (started from `instrumentation.ts`)
+  that runs the daily/weekly mail jobs from the web service itself; no separate Railway cron
+  service needed. Runs only when `NODE_ENV=production`.
 - `lib/import/tvtime.ts` — adaptive TV Time ZIP/CSV importer (column detection varies).
 - `prisma/schema.prisma` — data model.
 
