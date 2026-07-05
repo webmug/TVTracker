@@ -78,20 +78,34 @@ willen ontvangen; beide staan standaard aan.
 4. Deploy. De `startCommand` in `railway.json` draait automatisch `prisma migrate deploy`
    vóór het starten.
 
-### Cron-services voor meldingen
-Voeg in hetzelfde Railway-project een **extra service** toe vanuit dezelfde repo (voor de
-wekelijkse mail een tweede). Beide krijgen als **Variables** `APP_URL` (publieke URL van de
-web-service) en `CRON_SECRET` (zelfde waarde):
+### Meldingen (ingebouwde scheduler)
+De mail-jobs draaien **standaard vanuit de web-service zelf** — een in-process scheduler
+(`lib/scheduler.ts`, gestart via `instrumentation.ts`). **Je hoeft dus geen aparte Railway
+Cron-service in te stellen.** Schema's in lokale tijd (Europe/Amsterdam):
 
-| Mail | Start command | Cron Schedule | Endpoint |
+- **Dagelijks 08:00** — nieuwe-afleveringen-mail (`checkNewEpisodes`)
+- **Vrijdag 09:00** — wekelijkse samenvatting (`sendWeeklyDigest`)
+
+De scheduler draait alleen als `NODE_ENV=production`. Twee voorwaarden op de web-service:
+1. **Serverless / "scale to zero" UIT** — anders slaapt de container en vuurt de timer niet.
+2. **Eén instance** (geen horizontale scaling) — anders sturen meerdere instances dubbele mails.
+
+Bij de start zie je in de logs `[scheduler] gestart …`; na een run `[scheduler] dagelijks: N mail(s) …`.
+Beide respecteren de voorkeur per gebruiker (Instellingen); beide staan standaard aan.
+
+#### Alternatief: aparte Railway Cron-services
+Wil je de scheduling tóch loskoppelen van de web-service (bv. bij scale-to-zero of meerdere
+instances), voeg dan extra services toe vanuit dezelfde repo met `APP_URL` + `CRON_SECRET` als
+**Variables**, een **Custom Start Command** en een **Cron Schedule**:
+
+| Mail | Custom Start Command | Cron Schedule | Endpoint |
 | --- | --- | --- | --- |
 | Dagelijks (nieuwe afleveringen) | `node scripts/trigger-cron.mjs` | `0 8 * * *` (dagelijks 08:00) | `/api/cron/new-episodes` |
 | Wekelijks (vrijdag-samenvatting) | `node scripts/trigger-weekly.mjs` | `0 9 * * 5` (vrijdag 09:00) | `/api/cron/weekly-digest` |
 
-De services roepen het beveiligde endpoint aan (`Authorization: Bearer $CRON_SECRET`), dat de
-gevolgde series ververst en per gebruiker een mail stuurt — de dagelijkse bij elke nieuw
-uitgezonden aflevering, de wekelijkse als samenvatting van de afgelopen 7 dagen. Beide
-respecteren de voorkeur per gebruiker (Instellingen).
+Deze services roepen het beveiligde endpoint aan (`Authorization: Bearer $CRON_SECRET`).
+Let op: zet zo'n Cron Schedule **niet** op de web-service zelf — die zou dan buiten de
+geplande tijden offline gaan.
 
 ---
 
@@ -113,7 +127,8 @@ app/api/            auth, import, cron/new-episodes, cron/weekly-digest
 lib/tmdb.ts         TMDB-client
 lib/shows.ts        Serie + afleveringen syncen naar DB
 lib/notify.ts       Nieuwe-afleveringen check + mail (dagelijks + wekelijkse digest)
+lib/scheduler.ts    In-process scheduler (node-cron) — draait de mail-jobs vanuit de web-service
 lib/import/tvtime.ts  Adaptieve TV Time ZIP/CSV-importer
 prisma/schema.prisma  Datamodel
-scripts/trigger-cron.mjs / trigger-weekly.mjs  Railway Cron-triggers
+scripts/trigger-cron.mjs / trigger-weekly.mjs  Handmatige/optionele Railway Cron-triggers
 ```
