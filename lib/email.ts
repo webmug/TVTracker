@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { posterUrl } from "@/lib/tmdb";
 
 const apiKey = process.env.RESEND_API_KEY;
 export const resend = apiKey ? new Resend(apiKey) : null;
@@ -106,18 +107,17 @@ export async function sendInviteEmail(
 
 export interface NewEpisodeMail {
   showName: string;
+  posterPath?: string | null;
   episodes: { label: string; name: string | null; airDate: Date | null }[];
 }
 
-// Bouwt de per-serie afleveringenlijst; gedeeld door de dagelijkse en wekelijkse mail.
+// Bouwt de per-serie afleveringenlijst (met poster); gedeeld door de dagelijkse
+// en wekelijkse mail.
 function episodeRows(shows: NewEpisodeMail[]): string {
   return shows
-    .map(
-      (s, i) => `<div style="margin:0 0 18px;${
-        i > 0 ? "padding-top:16px;border-top:1px solid rgba(255,255,255,0.08);" : ""
-      }">
-        <p style="margin:0 0 8px;font-size:14px;font-weight:600;color:#f5f6fb;">${s.showName}</p>
-        <ul style="margin:0;padding-left:18px;">
+    .map((s, i) => {
+      const poster = posterUrl(s.posterPath, "w154");
+      const list = `<ul style="margin:0;padding-left:18px;">
           ${s.episodes
             .map(
               (e) =>
@@ -128,9 +128,26 @@ function episodeRows(shows: NewEpisodeMail[]): string {
                 }</li>`
             )
             .join("")}
-        </ul>
-      </div>`
-    )
+        </ul>`;
+
+      return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;${
+        i > 0 ? "padding-top:16px;border-top:1px solid rgba(255,255,255,0.08);" : ""
+      }">
+        <tr>
+          ${
+            poster
+              ? `<td width="52" valign="top" style="padding-right:14px;">
+                  <img src="${poster}" alt="" width="52" style="display:block;width:52px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);" />
+                </td>`
+              : ""
+          }
+          <td valign="top">
+            <p style="margin:0 0 8px;font-size:14px;font-weight:600;color:#f5f6fb;">${s.showName}</p>
+            ${list}
+          </td>
+        </tr>
+      </table>`;
+    })
     .join("");
 }
 
