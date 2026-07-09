@@ -2,12 +2,15 @@ import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
+import { sendInviteEmail } from "@/lib/email";
 
 async function createInvite(formData: FormData) {
   "use server";
   const admin = await requireAdmin();
   const email = String(formData.get("email") || "").trim().toLowerCase();
   if (!email) return;
+
+  const existing = await prisma.invite.findUnique({ where: { email } });
   await prisma.invite.upsert({
     where: { email },
     create: {
@@ -17,6 +20,22 @@ async function createInvite(formData: FormData) {
     },
     update: {}, // bestaat al -> laat staan
   });
+
+  // Alleen mailen als er nog geen account voor dit adres is (nieuwe of nog
+  // niet geaccepteerde uitnodiging).
+  if (!existing?.usedAt) {
+    const appUrl = process.env.NEXTAUTH_URL || process.env.APP_URL || "http://localhost:3000";
+    if (process.env.RESEND_API_KEY) {
+      try {
+        await sendInviteEmail(email, appUrl, admin.email);
+      } catch (err) {
+        console.error("[invite] versturen van uitnodigingsmail mislukt:", err);
+      }
+    } else {
+      console.log(`\n✉️ [dev] Uitnodiging voor ${email}: ${appUrl}/login\n`);
+    }
+  }
+
   revalidatePath("/admin/invites");
 }
 
@@ -40,8 +59,8 @@ export default async function InvitesPage() {
     <main>
       <h1 className="mb-4 text-xl font-semibold">Uitnodigen</h1>
       <p className="mb-4 text-sm text-[--color-muted]">
-        Voeg het e-mailadres toe van familie/vrienden. Zij kunnen daarna inloggen
-        via de inloglink.
+        Voeg het e-mailadres toe van familie/vrienden. Zij ontvangen direct een
+        uitnodigingsmail en kunnen daarna inloggen via de inloglink.
       </p>
 
       <form action={createInvite} className="mb-8 flex gap-2">

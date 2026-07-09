@@ -5,11 +5,11 @@ import { signIn, auth } from "@/lib/auth";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; email?: string }>;
 }) {
   const session = await auth();
   if (session?.user) redirect("/dashboard");
-  const { error } = await searchParams;
+  const { error, email } = await searchParams;
 
   async function login(formData: FormData) {
     "use server";
@@ -45,6 +45,7 @@ export default async function LoginPage({
           type="email"
           name="email"
           required
+          defaultValue={email || ""}
           placeholder="jij@voorbeeld.nl"
           className="rounded-lg border border-white/10 bg-[--color-panel] px-4 py-3 outline-none focus:border-[--color-accent]"
         />
