@@ -205,6 +205,8 @@ export function mockTmdb(path: string): unknown | undefined {
   const season = path.match(/^\/tv\/(\d+)\/season\/\d+$/);
   if (season) return { episodes: [] };
 
+  if (path.match(/\/watch\/providers$/)) return { results: {} };
+
   const tv = path.match(/^\/tv\/(\d+)$/);
   if (tv) {
     const id = Number(tv[1]);

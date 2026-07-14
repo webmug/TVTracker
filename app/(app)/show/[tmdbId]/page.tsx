@@ -4,11 +4,12 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { syncShow } from "@/lib/shows";
-import { posterUrl } from "@/lib/tmdb";
+import { posterUrl, getWatchProviders } from "@/lib/tmdb";
 import { FollowButton } from "@/app/(app)/_components/FollowButton";
 import { ExternalLinks } from "@/app/(app)/_components/ExternalLinks";
 import { ShowSeasonsToggle } from "@/app/(app)/_components/ShowSeasonsToggle";
 import { SeasonSection } from "@/app/(app)/_components/SeasonSection";
+import { WatchProvidersList } from "@/app/(app)/_components/WatchProvidersList";
 
 export default async function ShowPage({
   params,
@@ -32,6 +33,10 @@ export default async function ShowPage({
   const follow = await prisma.follow.findUnique({
     where: { userId_showId: { userId: user.id, showId: show.id } },
   });
+
+  // Streamingdiensten zijn een leuke extra, geen essentieel gegeven -> pagina
+  // moet blijven werken als TMDB hier hapert.
+  const providers = await getWatchProviders(tmdbId, "tv").catch(() => null);
 
   const watched = new Set(
     (
@@ -93,6 +98,9 @@ export default async function ShowPage({
               Soortgelijke series
             </Link>
             <ExternalLinks imdbId={show.imdbId} tmdbId={show.tmdbId} kind="tv" />
+          </div>
+          <div className="mt-4">
+            <WatchProvidersList providers={providers} />
           </div>
         </div>
       </div>

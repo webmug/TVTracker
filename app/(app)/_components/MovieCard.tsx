@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { posterUrl } from "@/lib/tmdb";
+import { posterUrl, type WatchProviders } from "@/lib/tmdb";
+import { getMovieWatchProviders } from "@/app/(app)/actions";
 import { MovieActionButton } from "@/app/(app)/_components/MovieActionButton";
 import { ExternalLinks } from "@/app/(app)/_components/ExternalLinks";
+import { WatchProvidersList } from "@/app/(app)/_components/WatchProvidersList";
 
 // Filmkaart voor Verken. Films hebben geen eigen detailpagina, dus de poster opent
 // een modal met de samenvatting en extra details. De actie-knoppen (watchlist/gezien)
@@ -28,8 +30,22 @@ export function MovieCard({
   initialState?: "none" | "watchlist" | "watched";
 }) {
   const [open, setOpen] = useState(false);
+  const [providers, setProviders] = useState<WatchProviders | null>(null);
   const poster = posterUrl(posterPath, "w342");
   const posterLarge = posterUrl(posterPath, "w500");
+
+  // Lazy: alleen ophalen zodra de modal daadwerkelijk opengaat, niet al bij het
+  // renderen van elke kaart in een grid/carousel.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    getMovieWatchProviders(tmdbId).then((p) => {
+      if (!cancelled) setProviders(p);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, tmdbId]);
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -111,6 +127,9 @@ export function MovieCard({
                   Soortgelijke films
                 </Link>
                 <ExternalLinks imdbId={imdbId} tmdbId={tmdbId} kind="movie" />
+              </div>
+              <div className="mt-4">
+                <WatchProvidersList providers={providers} />
               </div>
             </div>
           </div>
