@@ -229,6 +229,49 @@ export async function getAllEpisodes(details: TmdbShowDetails): Promise<TmdbEpis
   return all;
 }
 
+// ---------------------------------------------------------------------------
+// Streamingdiensten ("Kijken via"): TMDB's watch/providers-endpoint, gevoed
+// door JustWatch. Regio hard op NL (het enige publiek van deze app).
+// ---------------------------------------------------------------------------
+
+const WATCH_REGION = "NL";
+
+export interface WatchProvider {
+  id: number;
+  name: string;
+  logoPath: string | null;
+}
+
+export interface WatchProviders {
+  link: string | null;
+  flatrate: WatchProvider[];
+}
+
+interface RawWatchProvider {
+  provider_id: number;
+  provider_name: string;
+  logo_path: string | null;
+}
+
+export async function getWatchProviders(
+  tmdbId: number,
+  kind: MediaKind
+): Promise<WatchProviders | null> {
+  const data = await tmdb<{
+    results?: Record<string, { link?: string; flatrate?: RawWatchProvider[] }>;
+  }>(`/${kind}/${tmdbId}/watch/providers`);
+  const region = data.results?.[WATCH_REGION];
+  if (!region || !region.flatrate?.length) return null;
+  return {
+    link: region.link ?? null,
+    flatrate: region.flatrate.map((p) => ({
+      id: p.provider_id,
+      name: p.provider_name,
+      logoPath: p.logo_path,
+    })),
+  };
+}
+
 export function posterUrl(path: string | null | undefined, size = "w342"): string | null {
   if (!path) return null;
   return `${TMDB_IMG}/${size}${path}`;

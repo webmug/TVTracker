@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { syncShow, syncMovie } from "@/lib/shows";
+import { getWatchProviders, type WatchProviders } from "@/lib/tmdb";
 import {
   getSeriesLibraryPage,
   getWatchedMoviesPage,
@@ -206,4 +207,11 @@ export async function loadMoreSeries(
 export async function loadMoreWatchedMovies(offset: number): Promise<MovieCard[]> {
   const user = await requireUser();
   return getWatchedMoviesPage(user.id, offset);
+}
+
+// Streamingdiensten voor de filmdetailmodal (films hebben geen server-gerenderde
+// detailpagina, dus dit wordt lazy vanuit de client opgehaald zodra de modal opent).
+export async function getMovieWatchProviders(tmdbId: number): Promise<WatchProviders | null> {
+  await requireUser();
+  return getWatchProviders(tmdbId, "movie").catch(() => null);
 }
