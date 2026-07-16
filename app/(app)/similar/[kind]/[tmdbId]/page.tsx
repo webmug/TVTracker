@@ -43,7 +43,7 @@ export default async function SimilarPage({
       <h1 className="mb-6 text-xl font-semibold">{title}</h1>
 
       {items.length === 0 ? (
-        <p className="text-[--color-muted]">Geen soortgelijke titels gevonden.</p>
+        <p className="text-(--color-muted)">Geen soortgelijke titels gevonden.</p>
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-4">
           {items.map((item) => (

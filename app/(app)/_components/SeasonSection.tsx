@@ -47,12 +47,12 @@ export function SeasonSection({
           className="flex min-w-0 items-center gap-2 text-left"
           aria-expanded={!collapsed}
         >
-          <span className="text-[--color-muted]">{collapsed ? "▸" : "▾"}</span>
+          <span className="text-(--color-muted)">{collapsed ? "▸" : "▾"}</span>
           <h2 className="text-lg font-medium">
             {season === 0 ? "Specials" : `Seizoen ${season}`}
           </h2>
           {collapsed && (
-            <span className="text-sm text-[--color-muted]">
+            <span className="text-sm text-(--color-muted)">
               {watchedCount}/{total} gezien
             </span>
           )}
@@ -62,7 +62,7 @@ export function SeasonSection({
         </div>
       </div>
       {!collapsed && (
-        <ul className="flex flex-col divide-y divide-white/5 overflow-hidden rounded-xl border border-white/10 bg-[--color-panel]">
+        <ul className="flex flex-col divide-y divide-white/5 overflow-hidden rounded-xl border border-white/10 bg-(--color-panel)">
           {eps.map((ep) => {
             const isWatched = watched.has(ep.id);
             const future = ep.airDate && ep.airDate.getTime() > Date.now();
@@ -71,7 +71,7 @@ export function SeasonSection({
                 <WatchedCheckbox episodeId={ep.id} watched={isWatched} />
                 <div className="min-w-0 flex-1">
                   <span className="text-sm">
-                    <span className="text-[--color-muted]">
+                    <span className="text-(--color-muted)">
                       {epLabel(ep.season, ep.number)}
                     </span>{" "}
                     {ep.name}
@@ -80,7 +80,7 @@ export function SeasonSection({
                     <span
                       className={
                         "ml-2 text-xs " +
-                        (future ? "text-amber-300/80" : "text-[--color-muted]")
+                        (future ? "text-amber-300/80" : "text-(--color-muted)")
                       }
                     >
                       {future ? "verwacht " : ""}

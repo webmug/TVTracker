@@ -8,7 +8,7 @@ export function WatchProvidersList({ providers }: { providers: WatchProviders | 
 
   return (
     <div>
-      <p className="mb-1.5 text-xs font-medium text-[--color-muted]">Kijken via</p>
+      <p className="mb-1.5 text-xs font-medium text-(--color-muted)">Kijken via</p>
       <div className="flex flex-wrap items-center gap-2">
         {providers.flatrate.map((p) =>
           p.logoPath ? (
@@ -24,7 +24,7 @@ export function WatchProvidersList({ providers }: { providers: WatchProviders | 
           ) : (
             <span
               key={p.id}
-              className="rounded-md bg-[--color-panel2] px-2 py-1 text-xs text-[--color-muted]"
+              className="rounded-md bg-(--color-panel2) px-2 py-1 text-xs text-(--color-muted)"
             >
               {p.name}
             </span>
@@ -32,7 +32,7 @@ export function WatchProvidersList({ providers }: { providers: WatchProviders | 
         )}
       </div>
       {providers.link && (
-        <p className="mt-1.5 text-[10px] text-[--color-muted]">
+        <p className="mt-1.5 text-[10px] text-(--color-muted)">
           Data door{" "}
           <a
             href={providers.link}

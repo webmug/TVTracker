@@ -6,9 +6,10 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
 
-  const { backfillImdbIds } = await import("@/lib/backfill");
-  // Niet awaiten: laat de backfill op de achtergrond lopen.
+  const { backfillImdbIds, backfillWatchProviders } = await import("@/lib/backfill");
+  // Niet awaiten: laat de backfills op de achtergrond lopen.
   void backfillImdbIds();
+  void backfillWatchProviders();
 
   // Dagelijkse + wekelijkse mail-jobs vanuit de web-service zelf (geen aparte
   // Railway Cron-service nodig). No-op buiten productie.

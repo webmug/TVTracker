@@ -50,8 +50,8 @@ export default async function SeriesPage({
               className={
                 "rounded-full px-3 py-1.5 text-sm " +
                 (active
-                  ? "bg-[--color-accent] text-white"
-                  : "border border-white/15 text-[--color-muted] hover:text-white")
+                  ? "bg-(--color-accent) text-white"
+                  : "border border-white/15 text-(--color-muted) hover:text-white")
               }
             >
               {f.label}
@@ -68,14 +68,14 @@ export default async function SeriesPage({
       />
 
       {initial.length === 0 ? (
-        <div className="rounded-xl border border-white/10 bg-[--color-panel] p-6 text-center">
-          <p className="text-[--color-muted]">
+        <div className="rounded-xl border border-white/10 bg-(--color-panel) p-6 text-center">
+          <p className="text-(--color-muted)">
             Nog geen series in deze weergave.{" "}
-            <Link href="/search" className="text-[--color-accent] underline">
+            <Link href="/search" className="text-(--color-accent) underline">
               Zoek er een
             </Link>{" "}
             of{" "}
-            <Link href="/explore" className="text-[--color-accent] underline">
+            <Link href="/explore" className="text-(--color-accent) underline">
               verken tips
             </Link>
             .

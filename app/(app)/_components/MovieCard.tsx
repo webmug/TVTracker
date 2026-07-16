@@ -49,7 +49,7 @@ export function MovieCard({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="relative aspect-[2/3] w-full overflow-hidden rounded-xl border border-white/10 bg-[--color-panel2]">
+      <div className="relative aspect-[2/3] w-full overflow-hidden rounded-xl border border-white/10 bg-(--color-panel2)">
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -82,7 +82,7 @@ export function MovieCard({
         >
           {title}
         </button>
-        {year && <p className="truncate text-xs text-[--color-muted]">{year}</p>}
+        {year && <p className="truncate text-xs text-(--color-muted)">{year}</p>}
       </div>
 
       {open && (
@@ -95,13 +95,13 @@ export function MovieCard({
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="relative flex max-h-[85vh] w-full max-w-lg gap-4 overflow-y-auto rounded-2xl border border-white/10 bg-[--color-panel] p-5"
+            className="relative flex max-h-[85vh] w-full max-w-lg gap-4 overflow-y-auto rounded-2xl border border-white/10 bg-(--color-panel) p-5"
           >
             <button
               type="button"
               onClick={() => setOpen(false)}
               aria-label="Sluiten"
-              className="absolute right-3 top-3 rounded-lg px-2 py-1 text-[--color-muted] hover:bg-white/10 hover:text-white"
+              className="absolute right-3 top-3 rounded-lg px-2 py-1 text-(--color-muted) hover:bg-white/10 hover:text-white"
             >
               ✕
             </button>
@@ -114,15 +114,15 @@ export function MovieCard({
 
             <div className="min-w-0 flex-1 pr-6">
               <h2 className="text-lg font-semibold">{title}</h2>
-              {year && <p className="mb-3 text-sm text-[--color-muted]">{year}</p>}
-              <p className="mb-4 text-sm leading-relaxed text-[--color-muted]">
+              {year && <p className="mb-3 text-sm text-(--color-muted)">{year}</p>}
+              <p className="mb-4 text-sm leading-relaxed text-(--color-muted)">
                 {overview || "Geen samenvatting beschikbaar."}
               </p>
               <div className="flex flex-wrap items-center gap-3">
                 <MovieActionButton tmdbId={tmdbId} initial={initialState} />
                 <Link
                   href={`/similar/movie/${tmdbId}`}
-                  className="text-xs text-[--color-muted] underline decoration-white/20 hover:text-white"
+                  className="text-xs text-(--color-muted) underline decoration-white/20 hover:text-white"
                 >
                   Soortgelijke films
                 </Link>

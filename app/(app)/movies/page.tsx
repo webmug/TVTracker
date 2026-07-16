@@ -59,8 +59,8 @@ export default async function MoviesPage({
               className={
                 "rounded-full px-3 py-1.5 text-sm " +
                 (active
-                  ? "bg-[--color-accent] text-white"
-                  : "border border-white/15 text-[--color-muted] hover:text-white")
+                  ? "bg-(--color-accent) text-white"
+                  : "border border-white/15 text-(--color-muted) hover:text-white")
               }
             >
               {f.label}
@@ -77,18 +77,18 @@ export default async function MoviesPage({
       />
 
       {empty && (
-        <div className="rounded-xl border border-white/10 bg-[--color-panel] p-6 text-center">
-          <p className="text-[--color-muted]">
+        <div className="rounded-xl border border-white/10 bg-(--color-panel) p-6 text-center">
+          <p className="text-(--color-muted)">
             {filter === "watchlist"
               ? "Nog geen films op je watchlist. "
               : filter === "watched"
                 ? "Nog geen geziene films. "
                 : "Nog geen films. "}
-            <Link href="/search" className="text-[--color-accent] underline">
+            <Link href="/search" className="text-(--color-accent) underline">
               Zoek een film
             </Link>{" "}
             of{" "}
-            <Link href="/import" className="text-[--color-accent] underline">
+            <Link href="/import" className="text-(--color-accent) underline">
               importeer je TV Time-historie
             </Link>
             .
@@ -99,7 +99,7 @@ export default async function MoviesPage({
       {showWatchlist && watchlist.length > 0 && (
         <section className="mb-10">
           {filter === "all" && (
-            <h2 className="mb-3 text-sm font-medium text-[--color-muted]">
+            <h2 className="mb-3 text-sm font-medium text-(--color-muted)">
               Wil ik zien ({watchlist.length})
             </h2>
           )}
@@ -123,7 +123,7 @@ export default async function MoviesPage({
       {showWatched && watchedFirst.length > 0 && (
         <section>
           {filter === "all" && (
-            <h2 className="mb-3 text-sm font-medium text-[--color-muted]">Gezien</h2>
+            <h2 className="mb-3 text-sm font-medium text-(--color-muted)">Gezien</h2>
           )}
           <WatchedMoviesGrid
             key={providerId ?? ""}

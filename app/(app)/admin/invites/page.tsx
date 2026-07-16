@@ -58,7 +58,7 @@ export default async function InvitesPage() {
   return (
     <main>
       <h1 className="mb-4 text-xl font-semibold">Uitnodigen</h1>
-      <p className="mb-4 text-sm text-[--color-muted]">
+      <p className="mb-4 text-sm text-(--color-muted)">
         Voeg het e-mailadres toe van familie/vrienden. Zij ontvangen direct een
         uitnodigingsmail en kunnen daarna inloggen via de inloglink.
       </p>
@@ -69,22 +69,22 @@ export default async function InvitesPage() {
           name="email"
           required
           placeholder="naam@voorbeeld.nl"
-          className="flex-1 rounded-lg border border-white/10 bg-[--color-panel] px-4 py-3 outline-none focus:border-[--color-accent]"
+          className="flex-1 rounded-lg border border-white/10 bg-(--color-panel) px-4 py-3 outline-none focus:border-(--color-accent)"
         />
-        <button className="rounded-lg bg-[--color-accent] px-5 py-3 font-medium text-white">
+        <button className="rounded-lg bg-(--color-accent) px-5 py-3 font-medium text-white">
           Uitnodigen
         </button>
       </form>
 
-      <h2 className="mb-2 text-sm font-medium text-[--color-muted]">Uitnodigingen</h2>
+      <h2 className="mb-2 text-sm font-medium text-(--color-muted)">Uitnodigingen</h2>
       <ul className="mb-8 flex flex-col gap-2">
         {invites.length === 0 && (
-          <li className="text-sm text-[--color-muted]">Nog geen uitnodigingen.</li>
+          <li className="text-sm text-(--color-muted)">Nog geen uitnodigingen.</li>
         )}
         {invites.map((inv) => (
           <li
             key={inv.id}
-            className="flex items-center gap-3 rounded-lg border border-white/10 bg-[--color-panel] px-3 py-2 text-sm"
+            className="flex items-center gap-3 rounded-lg border border-white/10 bg-(--color-panel) px-3 py-2 text-sm"
           >
             <span className="flex-1">{inv.email}</span>
             <span className={inv.usedAt ? "text-emerald-400" : "text-amber-300"}>
@@ -92,7 +92,7 @@ export default async function InvitesPage() {
             </span>
             <form action={deleteInvite}>
               <input type="hidden" name="id" value={inv.id} />
-              <button className="text-[--color-muted] hover:text-red-300">
+              <button className="text-(--color-muted) hover:text-red-300">
                 verwijderen
               </button>
             </form>
@@ -100,15 +100,15 @@ export default async function InvitesPage() {
         ))}
       </ul>
 
-      <h2 className="mb-2 text-sm font-medium text-[--color-muted]">Gebruikers</h2>
+      <h2 className="mb-2 text-sm font-medium text-(--color-muted)">Gebruikers</h2>
       <ul className="flex flex-col gap-2">
         {users.map((u) => (
           <li
             key={u.email}
-            className="flex items-center gap-3 rounded-lg border border-white/10 bg-[--color-panel] px-3 py-2 text-sm"
+            className="flex items-center gap-3 rounded-lg border border-white/10 bg-(--color-panel) px-3 py-2 text-sm"
           >
             <span className="flex-1">{u.email}</span>
-            <span className="text-[--color-muted]">{u.role}</span>
+            <span className="text-(--color-muted)">{u.role}</span>
           </li>
         ))}
       </ul>

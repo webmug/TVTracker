@@ -10,7 +10,7 @@ function StatusBadge({ status }: { status: string | null | undefined }) {
   return (
     <span
       className={`rounded-md px-1.5 py-0.5 text-[10px] font-medium backdrop-blur ${
-        label.ended ? "bg-black/70 text-[--color-muted]" : "bg-emerald-600/80 text-white"
+        label.ended ? "bg-black/70 text-(--color-muted)" : "bg-emerald-600/80 text-white"
       }`}
     >
       {label.text}

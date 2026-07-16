@@ -187,10 +187,10 @@ export default async function ExplorePage() {
       <h1 className="mb-6 text-xl font-semibold">Verken</h1>
 
       {nothing && (
-        <div className="rounded-xl border border-white/10 bg-[--color-panel] p-6 text-center">
-          <p className="text-[--color-muted]">
+        <div className="rounded-xl border border-white/10 bg-(--color-panel) p-6 text-center">
+          <p className="text-(--color-muted)">
             Nog niks te verkennen. Begin met{" "}
-            <Link href="/search" className="text-[--color-accent] underline">
+            <Link href="/search" className="text-(--color-accent) underline">
               zoeken
             </Link>{" "}
             en volg een paar series of films — dan komen hier tips.

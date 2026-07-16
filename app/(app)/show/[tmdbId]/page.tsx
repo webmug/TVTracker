@@ -74,16 +74,16 @@ export default async function ShowPage({
             className="h-44 w-28 rounded-lg object-cover"
           />
         ) : (
-          <div className="flex h-44 w-28 items-center justify-center rounded-lg bg-[--color-panel2] text-4xl">
+          <div className="flex h-44 w-28 items-center justify-center rounded-lg bg-(--color-panel2) text-4xl">
             📺
           </div>
         )}
         <div className="flex-1">
           <h1 className="text-2xl font-semibold">{show.name}</h1>
-          <p className="mt-1 text-sm text-[--color-muted]">
+          <p className="mt-1 text-sm text-(--color-muted)">
             {show.status ?? ""} · {totalWatched}/{total} gezien
           </p>
-          <p className="mt-2 line-clamp-4 text-sm text-[--color-muted]">
+          <p className="mt-2 line-clamp-4 text-sm text-(--color-muted)">
             {show.overview}
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-4">
@@ -93,7 +93,7 @@ export default async function ShowPage({
             )}
             <Link
               href={`/similar/tv/${tmdbId}`}
-              className="rounded-lg border border-white/15 px-4 py-2 text-sm text-[--color-muted] hover:text-white"
+              className="rounded-lg border border-white/15 px-4 py-2 text-sm text-(--color-muted) hover:text-white"
             >
               Soortgelijke series
             </Link>

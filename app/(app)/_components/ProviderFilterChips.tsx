@@ -33,8 +33,8 @@ export function ProviderFilterChips({
         className={
           "rounded-full px-3 py-1.5 text-sm " +
           (!active
-            ? "bg-[--color-accent] text-white"
-            : "border border-white/15 text-[--color-muted] hover:text-white")
+            ? "bg-(--color-accent) text-white"
+            : "border border-white/15 text-(--color-muted) hover:text-white")
         }
       >
         Alle diensten
@@ -49,8 +49,8 @@ export function ProviderFilterChips({
             className={
               "flex items-center gap-1.5 rounded-full py-1 pl-1 pr-3 text-sm " +
               (isActive
-                ? "bg-[--color-accent] text-white"
-                : "border border-white/15 text-[--color-muted] hover:text-white")
+                ? "bg-(--color-accent) text-white"
+                : "border border-white/15 text-(--color-muted) hover:text-white")
             }
           >
             {p.logoPath ? (

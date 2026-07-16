@@ -11,7 +11,7 @@ export function ExternalLinks({
   kind: "tv" | "movie";
 }) {
   const linkClass =
-    "text-xs text-[--color-muted] underline decoration-white/20 hover:text-white";
+    "text-xs text-(--color-muted) underline decoration-white/20 hover:text-white";
 
   return (
     <div className="flex flex-wrap items-center gap-3">

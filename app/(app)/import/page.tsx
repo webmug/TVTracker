@@ -72,13 +72,13 @@ export default function ImportPage() {
   return (
     <main>
       <h1 className="mb-2 text-xl font-semibold">Importeer je TV Time-historie</h1>
-      <p className="mb-4 text-sm text-[--color-muted]">
+      <p className="mb-4 text-sm text-(--color-muted)">
         Vraag je export aan op{" "}
         <a
           href="https://gdpr.tvtime.com/gdpr/self-service"
           target="_blank"
           rel="noreferrer"
-          className="text-[--color-accent] underline"
+          className="text-(--color-accent) underline"
         >
           gdpr.tvtime.com
         </a>{" "}
@@ -86,7 +86,7 @@ export default function ImportPage() {
         eerst een voorbeeld; pas daarna importeren we echt.
       </p>
 
-      <div className="rounded-xl border border-white/10 bg-[--color-panel] p-4">
+      <div className="rounded-xl border border-white/10 bg-(--color-panel) p-4">
         <input
           type="file"
           accept=".zip"
@@ -95,7 +95,7 @@ export default function ImportPage() {
             setResult(null);
             setDone(false);
           }}
-          className="block w-full text-sm text-[--color-muted] file:mr-3 file:rounded-lg file:border-0 file:bg-[--color-accent] file:px-4 file:py-2 file:text-white"
+          className="block w-full text-sm text-(--color-muted) file:mr-3 file:rounded-lg file:border-0 file:bg-(--color-accent) file:px-4 file:py-2 file:text-white"
         />
         <div className="mt-4 flex gap-2">
           <button
@@ -108,7 +108,7 @@ export default function ImportPage() {
           <button
             disabled={!file || !result || loading !== false || done}
             onClick={() => upload("commit")}
-            className="rounded-lg bg-[--color-accent] px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+            className="rounded-lg bg-(--color-accent) px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
           >
             {loading === "commit" ? "Importeren…" : "2. Import bevestigen"}
           </button>
@@ -153,22 +153,22 @@ export default function ImportPage() {
             </p>
           )}
 
-          <h2 className="mb-2 mt-6 text-sm font-medium text-[--color-muted]">
+          <h2 className="mb-2 mt-6 text-sm font-medium text-(--color-muted)">
             Herkende series
           </h2>
           <ul className="flex flex-col gap-1.5">
             {result.report.series.map((s, i) => (
               <li
                 key={i}
-                className="flex items-center gap-3 rounded-lg border border-white/10 bg-[--color-panel] px-3 py-2 text-sm"
+                className="flex items-center gap-3 rounded-lg border border-white/10 bg-(--color-panel) px-3 py-2 text-sm"
               >
                 <span className="flex-1">
                   {s.name ?? "(onbekende titel)"}
                   {s.matchedName && s.matchedName !== s.name && (
-                    <span className="text-[--color-muted]"> → {s.matchedName}</span>
+                    <span className="text-(--color-muted)"> → {s.matchedName}</span>
                   )}
                 </span>
-                <span className="text-[--color-muted]">{s.episodeCount} afl.</span>
+                <span className="text-(--color-muted)">{s.episodeCount} afl.</span>
                 <span
                   className={
                     s.confidence === "id"
@@ -203,22 +203,22 @@ export default function ImportPage() {
                 </p>
               )}
 
-              <h2 className="mb-2 mt-6 text-sm font-medium text-[--color-muted]">
+              <h2 className="mb-2 mt-6 text-sm font-medium text-(--color-muted)">
                 Films
               </h2>
               <ul className="flex flex-col gap-1.5">
                 {result.movieReport.movies.map((mv, i) => (
                   <li
                     key={i}
-                    className="flex items-center gap-3 rounded-lg border border-white/10 bg-[--color-panel] px-3 py-2 text-sm"
+                    className="flex items-center gap-3 rounded-lg border border-white/10 bg-(--color-panel) px-3 py-2 text-sm"
                   >
                     <span className="flex-1">
                       {mv.title ?? "(onbekende titel)"}
                       {mv.matchedName && mv.matchedName !== mv.title && (
-                        <span className="text-[--color-muted]"> → {mv.matchedName}</span>
+                        <span className="text-(--color-muted)"> → {mv.matchedName}</span>
                       )}
                     </span>
-                    <span className="text-[--color-muted]">
+                    <span className="text-(--color-muted)">
                       {mv.status === "watchlist" ? "watchlist" : "gezien"}
                     </span>
                     <span
@@ -249,9 +249,9 @@ export default function ImportPage() {
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-[--color-panel] p-4">
+    <div className="rounded-xl border border-white/10 bg-(--color-panel) p-4">
       <div className="text-2xl font-semibold">{value}</div>
-      <div className="text-xs text-[--color-muted]">{label}</div>
+      <div className="text-xs text-(--color-muted)">{label}</div>
     </div>
   );
 }

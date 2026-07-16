@@ -12,7 +12,7 @@ import {
 
 // Cachet de flatrate-streamingdiensten van TMDB in de ShowWatchProvider-tabel,
 // zodat de bibliotheek erop kan filteren zonder TMDB te bevragen (zie syncShow).
-async function syncShowWatchProviders(showId: string, providers: WatchProviders | null) {
+export async function syncShowWatchProviders(showId: string, providers: WatchProviders | null) {
   const flatrate = providers?.flatrate ?? [];
   await prisma.showWatchProvider.deleteMany({
     where: { showId, providerId: { notIn: flatrate.map((p) => p.id) } },
@@ -27,7 +27,7 @@ async function syncShowWatchProviders(showId: string, providers: WatchProviders 
 }
 
 // Zie syncShowWatchProviders: dezelfde cache, maar voor films (zie syncMovie).
-async function syncMovieWatchProviders(movieId: string, providers: WatchProviders | null) {
+export async function syncMovieWatchProviders(movieId: string, providers: WatchProviders | null) {
   const flatrate = providers?.flatrate ?? [];
   await prisma.movieWatchProvider.deleteMany({
     where: { movieId, providerId: { notIn: flatrate.map((p) => p.id) } },
