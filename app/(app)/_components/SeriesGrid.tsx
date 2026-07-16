@@ -8,17 +8,19 @@ import type { SeriesCard, FollowFilter } from "@/lib/library";
 export function SeriesGrid({
   initialItems,
   filter,
+  providerId,
   pageSize,
 }: {
   initialItems: SeriesCard[];
   filter: FollowFilter;
+  providerId?: number;
   pageSize: number;
 }) {
   return (
     <InfiniteGrid<SeriesCard>
       initialItems={initialItems}
       pageSize={pageSize}
-      loadMore={(offset) => loadMoreSeries(offset, filter)}
+      loadMore={(offset) => loadMoreSeries(offset, filter, providerId)}
       itemKey={(s) => s.tmdbId}
       renderItem={(s) => {
         // Voortgang rekent over beschikbare (uitgezonden) afleveringen;

@@ -103,8 +103,25 @@ model Show {
   firstAirDate DateTime?
   lastSyncedAt DateTime  @default(now())
 
-  episodes Episode[]
-  follows  Follow[]
+  episodes       Episode[]
+  follows        Follow[]
+  watchProviders ShowWatchProvider[]
+}
+
+// Cache van TMDB's watch/providers (via JustWatch, regio NL) per serie, zodat de
+// bibliotheek op streamingdienst kan filteren zonder bij elke paginalading TMDB
+// te bevragen. Wordt bijgewerkt in syncShow(), net als de andere TMDB-velden.
+model ShowWatchProvider {
+  id           String  @id @default(cuid())
+  showId       String
+  providerId   Int
+  providerName String
+  logoPath     String?
+
+  show Show @relation(fields: [showId], references: [id], onDelete: Cascade)
+
+  @@unique([showId, providerId])
+  @@index([providerId])
 }
 
 model Episode {
@@ -176,8 +193,23 @@ model Movie {
   releaseDate  DateTime?
   lastSyncedAt DateTime  @default(now())
 
-  watched   WatchedMovie[]
-  watchlist WatchlistMovie[]
+  watched        WatchedMovie[]
+  watchlist      WatchlistMovie[]
+  watchProviders MovieWatchProvider[]
+}
+
+// Zie ShowWatchProvider: dezelfde cache, maar voor films.
+model MovieWatchProvider {
+  id           String  @id @default(cuid())
+  movieId      String
+  providerId   Int
+  providerName String
+  logoPath     String?
+
+  movie Movie @relation(fields: [movieId], references: [id], onDelete: Cascade)
+
+  @@unique([movieId, providerId])
+  @@index([providerId])
 }
 
 model WatchedMovie {

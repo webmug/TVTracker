@@ -7,16 +7,18 @@ import type { MovieCard } from "@/lib/library";
 
 export function WatchedMoviesGrid({
   initialItems,
+  providerId,
   pageSize,
 }: {
   initialItems: MovieCard[];
+  providerId?: number;
   pageSize: number;
 }) {
   return (
     <InfiniteGrid<MovieCard>
       initialItems={initialItems}
       pageSize={pageSize}
-      loadMore={(offset) => loadMoreWatchedMovies(offset)}
+      loadMore={(offset) => loadMoreWatchedMovies(offset, providerId)}
       itemKey={(m) => m.id}
       renderItem={(m) => (
         <MovieCardTile

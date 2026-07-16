@@ -198,15 +198,19 @@ export async function toggleAllSeasons(showTmdbId: number, watched: boolean) {
 
 export async function loadMoreSeries(
   offset: number,
-  filter: FollowFilter = "all"
+  filter: FollowFilter = "all",
+  providerId?: number
 ): Promise<SeriesCard[]> {
   const user = await requireUser();
-  return getSeriesLibraryPage(user.id, offset, undefined, filter);
+  return getSeriesLibraryPage(user.id, offset, undefined, filter, providerId);
 }
 
-export async function loadMoreWatchedMovies(offset: number): Promise<MovieCard[]> {
+export async function loadMoreWatchedMovies(
+  offset: number,
+  providerId?: number
+): Promise<MovieCard[]> {
   const user = await requireUser();
-  return getWatchedMoviesPage(user.id, offset);
+  return getWatchedMoviesPage(user.id, offset, undefined, providerId);
 }
 
 // Streamingdiensten voor de filmdetailmodal (films hebben geen server-gerenderde

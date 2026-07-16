@@ -1,8 +1,14 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/session";
-import { getWatchlistMovies, getWatchedMoviesPage, PAGE_SIZE } from "@/lib/library";
+import {
+  getWatchlistMovies,
+  getWatchedMoviesPage,
+  getMovieWatchProviderOptions,
+  PAGE_SIZE,
+} from "@/lib/library";
 import { MovieCard } from "@/app/(app)/_components/MovieCard";
 import { WatchedMoviesGrid } from "@/app/(app)/_components/WatchedMoviesGrid";
+import { ProviderFilterChips } from "@/app/(app)/_components/ProviderFilterChips";
 
 type MovieFilter = "all" | "watchlist" | "watched";
 
@@ -15,20 +21,22 @@ const FILTERS: { value: MovieFilter; label: string }[] = [
 export default async function MoviesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ filter?: string }>;
+  searchParams: Promise<{ filter?: string; provider?: string }>;
 }) {
   const user = await requireUser();
-  const { filter: filterParam } = await searchParams;
+  const { filter: filterParam, provider } = await searchParams;
   const filter: MovieFilter = FILTERS.some((f) => f.value === filterParam)
     ? (filterParam as MovieFilter)
     : "all";
+  const providerId = provider ? Number(provider) : undefined;
 
   const showWatchlist = filter === "all" || filter === "watchlist";
   const showWatched = filter === "all" || filter === "watched";
 
-  const [watchlist, watchedFirst] = await Promise.all([
-    showWatchlist ? getWatchlistMovies(user.id) : Promise.resolve([]),
-    showWatched ? getWatchedMoviesPage(user.id, 0, PAGE_SIZE) : Promise.resolve([]),
+  const [watchlist, watchedFirst, providerOptions] = await Promise.all([
+    showWatchlist ? getWatchlistMovies(user.id, providerId) : Promise.resolve([]),
+    showWatched ? getWatchedMoviesPage(user.id, 0, PAGE_SIZE, providerId) : Promise.resolve([]),
+    getMovieWatchProviderOptions(user.id),
   ]);
 
   const empty = watchlist.length === 0 && watchedFirst.length === 0;
@@ -37,13 +45,17 @@ export default async function MoviesPage({
     <main>
       <h1 className="mb-4 text-xl font-semibold">Films</h1>
 
-      <div className="mb-6 flex flex-wrap gap-2">
+      <div className="mb-3 flex flex-wrap gap-2">
         {FILTERS.map((f) => {
           const active = f.value === filter;
+          const params = new URLSearchParams();
+          if (f.value !== "all") params.set("filter", f.value);
+          if (providerId) params.set("provider", String(providerId));
+          const qs = params.toString();
           return (
             <Link
               key={f.value}
-              href={f.value === "all" ? "/movies" : `/movies?filter=${f.value}`}
+              href={qs ? `/movies?${qs}` : "/movies"}
               className={
                 "rounded-full px-3 py-1.5 text-sm " +
                 (active
@@ -56,6 +68,13 @@ export default async function MoviesPage({
           );
         })}
       </div>
+
+      <ProviderFilterChips
+        basePath="/movies"
+        options={providerOptions}
+        active={providerId}
+        otherParams={filter !== "all" ? { filter } : {}}
+      />
 
       {empty && (
         <div className="rounded-xl border border-white/10 bg-[--color-panel] p-6 text-center">
@@ -106,7 +125,12 @@ export default async function MoviesPage({
           {filter === "all" && (
             <h2 className="mb-3 text-sm font-medium text-[--color-muted]">Gezien</h2>
           )}
-          <WatchedMoviesGrid initialItems={watchedFirst} pageSize={PAGE_SIZE} />
+          <WatchedMoviesGrid
+            key={providerId ?? ""}
+            initialItems={watchedFirst}
+            providerId={providerId}
+            pageSize={PAGE_SIZE}
+          />
         </section>
       )}
     </main>

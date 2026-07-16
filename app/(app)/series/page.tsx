@@ -1,7 +1,13 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/session";
-import { getSeriesLibraryPage, PAGE_SIZE, type FollowFilter } from "@/lib/library";
+import {
+  getSeriesLibraryPage,
+  getSeriesWatchProviderOptions,
+  PAGE_SIZE,
+  type FollowFilter,
+} from "@/lib/library";
 import { SeriesGrid } from "@/app/(app)/_components/SeriesGrid";
+import { ProviderFilterChips } from "@/app/(app)/_components/ProviderFilterChips";
 
 const FILTERS: { value: FollowFilter; label: string }[] = [
   { value: "all", label: "Alles" },
@@ -12,27 +18,35 @@ const FILTERS: { value: FollowFilter; label: string }[] = [
 export default async function SeriesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; provider?: string }>;
 }) {
   const user = await requireUser();
-  const { status } = await searchParams;
+  const { status, provider } = await searchParams;
   const filter: FollowFilter = FILTERS.some((f) => f.value === status)
     ? (status as FollowFilter)
     : "all";
+  const providerId = provider ? Number(provider) : undefined;
 
-  const initial = await getSeriesLibraryPage(user.id, 0, PAGE_SIZE, filter);
+  const [initial, providerOptions] = await Promise.all([
+    getSeriesLibraryPage(user.id, 0, PAGE_SIZE, filter, providerId),
+    getSeriesWatchProviderOptions(user.id),
+  ]);
 
   return (
     <main>
       <h1 className="mb-4 text-xl font-semibold">Series</h1>
 
-      <div className="mb-6 flex flex-wrap gap-2">
+      <div className="mb-3 flex flex-wrap gap-2">
         {FILTERS.map((f) => {
           const active = f.value === filter;
+          const params = new URLSearchParams();
+          if (f.value !== "all") params.set("status", f.value);
+          if (providerId) params.set("provider", String(providerId));
+          const qs = params.toString();
           return (
             <Link
               key={f.value}
-              href={f.value === "all" ? "/series" : `/series?status=${f.value}`}
+              href={qs ? `/series?${qs}` : "/series"}
               className={
                 "rounded-full px-3 py-1.5 text-sm " +
                 (active
@@ -45,6 +59,13 @@ export default async function SeriesPage({
           );
         })}
       </div>
+
+      <ProviderFilterChips
+        basePath="/series"
+        options={providerOptions}
+        active={providerId}
+        otherParams={filter !== "all" ? { status: filter } : {}}
+      />
 
       {initial.length === 0 ? (
         <div className="rounded-xl border border-white/10 bg-[--color-panel] p-6 text-center">
@@ -61,7 +82,13 @@ export default async function SeriesPage({
           </p>
         </div>
       ) : (
-        <SeriesGrid key={filter} initialItems={initial} filter={filter} pageSize={PAGE_SIZE} />
+        <SeriesGrid
+          key={`${filter}-${providerId ?? ""}`}
+          initialItems={initial}
+          filter={filter}
+          providerId={providerId}
+          pageSize={PAGE_SIZE}
+        />
       )}
     </main>
   );

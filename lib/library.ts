@@ -22,12 +22,13 @@ export interface SeriesCard {
 }
 
 // Eén pagina gevolgde series met voortgang (gezien/totaal), ongeacht status
-// (of gefilterd op status). Nieuwste follows eerst.
+// (of gefilterd op status/streamingdienst). Nieuwste follows eerst.
 export async function getSeriesLibraryPage(
   userId: string,
   offset: number,
   take = PAGE_SIZE,
-  filter: FollowFilter = "all"
+  filter: FollowFilter = "all",
+  providerId?: number
 ): Promise<SeriesCard[]> {
   const now = new Date();
 
@@ -44,13 +45,17 @@ export async function getSeriesLibraryPage(
       { episodes: { none: { AND: [aired, { watched: { none: { userId } } }] } } },
     ],
   };
-  const showFilter =
+  const progressFilter =
     filter === "watching" ? hasUnwatched : filter === "finished" ? allWatched : undefined;
+  const showFilters = [
+    progressFilter,
+    providerId ? { watchProviders: { some: { providerId } } } : undefined,
+  ].filter((f): f is NonNullable<typeof f> => f !== undefined);
 
   const follows = await prisma.follow.findMany({
     where: {
       userId,
-      ...(showFilter ? { show: showFilter } : {}),
+      ...(showFilters.length > 0 ? { show: { AND: showFilters } } : {}),
     },
     orderBy: { createdAt: "desc" },
     skip: offset,
@@ -124,9 +129,12 @@ export interface MovieCard {
   year: number | null;
 }
 
-export async function getWatchlistMovies(userId: string): Promise<MovieCard[]> {
+export async function getWatchlistMovies(userId: string, providerId?: number): Promise<MovieCard[]> {
   const rows = await prisma.watchlistMovie.findMany({
-    where: { userId },
+    where: {
+      userId,
+      ...(providerId ? { movie: { watchProviders: { some: { providerId } } } } : {}),
+    },
     orderBy: { addedAt: "desc" },
     select: {
       movie: {
@@ -140,10 +148,14 @@ export async function getWatchlistMovies(userId: string): Promise<MovieCard[]> {
 export async function getWatchedMoviesPage(
   userId: string,
   offset: number,
-  take = PAGE_SIZE
+  take = PAGE_SIZE,
+  providerId?: number
 ): Promise<MovieCard[]> {
   const rows = await prisma.watchedMovie.findMany({
-    where: { userId },
+    where: {
+      userId,
+      ...(providerId ? { movie: { watchProviders: { some: { providerId } } } } : {}),
+    },
     orderBy: { watchedAt: "desc" },
     skip: offset,
     take,
@@ -174,4 +186,37 @@ function toMovieCard(m: {
     posterPath: m.posterPath,
     year: m.releaseDate?.getFullYear() ?? null,
   };
+}
+
+export interface WatchProviderOption {
+  id: number;
+  name: string;
+  logoPath: string | null;
+}
+
+// Streamingdiensten die daadwerkelijk voorkomen in de gevolgde series van deze
+// gebruiker, voor de filterchips op /series. Alfabetisch gesorteerd.
+export async function getSeriesWatchProviderOptions(userId: string): Promise<WatchProviderOption[]> {
+  const rows = await prisma.showWatchProvider.findMany({
+    where: { show: { follows: { some: { userId } } } },
+    distinct: ["providerId"],
+    orderBy: { providerName: "asc" },
+    select: { providerId: true, providerName: true, logoPath: true },
+  });
+  return rows.map((r) => ({ id: r.providerId, name: r.providerName, logoPath: r.logoPath }));
+}
+
+// Idem, maar over de filmbibliotheek (watchlist + gezien) van deze gebruiker.
+export async function getMovieWatchProviderOptions(userId: string): Promise<WatchProviderOption[]> {
+  const rows = await prisma.movieWatchProvider.findMany({
+    where: {
+      movie: {
+        OR: [{ watchlist: { some: { userId } } }, { watched: { some: { userId } } }],
+      },
+    },
+    distinct: ["providerId"],
+    orderBy: { providerName: "asc" },
+    select: { providerId: true, providerName: true, logoPath: true },
+  });
+  return rows.map((r) => ({ id: r.providerId, name: r.providerName, logoPath: r.logoPath }));
 }
