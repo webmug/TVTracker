@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/session";
 import {
   getSeriesLibraryPage,
   getSeriesWatchProviderOptions,
+  parseProviderIds,
   PAGE_SIZE,
   type FollowFilter,
 } from "@/lib/library";
@@ -25,10 +26,10 @@ export default async function SeriesPage({
   const filter: FollowFilter = FILTERS.some((f) => f.value === status)
     ? (status as FollowFilter)
     : "all";
-  const providerId = provider ? Number(provider) : undefined;
+  const providerIds = parseProviderIds(provider);
 
   const [initial, providerOptions] = await Promise.all([
-    getSeriesLibraryPage(user.id, 0, PAGE_SIZE, filter, providerId),
+    getSeriesLibraryPage(user.id, 0, PAGE_SIZE, filter, providerIds),
     getSeriesWatchProviderOptions(user.id),
   ]);
 
@@ -41,7 +42,7 @@ export default async function SeriesPage({
           const active = f.value === filter;
           const params = new URLSearchParams();
           if (f.value !== "all") params.set("status", f.value);
-          if (providerId) params.set("provider", String(providerId));
+          if (providerIds.length > 0) params.set("provider", providerIds.join(","));
           const qs = params.toString();
           return (
             <Link
@@ -63,7 +64,7 @@ export default async function SeriesPage({
       <ProviderFilterChips
         basePath="/series"
         options={providerOptions}
-        active={providerId}
+        active={providerIds}
         otherParams={filter !== "all" ? { status: filter } : {}}
       />
 
@@ -83,10 +84,10 @@ export default async function SeriesPage({
         </div>
       ) : (
         <SeriesGrid
-          key={`${filter}-${providerId ?? ""}`}
+          key={`${filter}-${providerIds.join(",")}`}
           initialItems={initial}
           filter={filter}
-          providerId={providerId}
+          providerIds={providerIds}
           pageSize={PAGE_SIZE}
         />
       )}

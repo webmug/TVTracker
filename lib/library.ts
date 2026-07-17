@@ -6,6 +6,16 @@ import { prisma } from "@/lib/prisma";
 
 export const PAGE_SIZE = 40;
 
+// Parseert de `?provider=8,337`-queryparam (kan ook één id zijn) naar een lijst
+// geldige TMDB-provider-ids, voor de multi-select streamingdienst-filters.
+export function parseProviderIds(param: string | undefined): number[] {
+  if (!param) return [];
+  return param
+    .split(",")
+    .map((s) => Number(s))
+    .filter((n) => Number.isInteger(n) && n > 0);
+}
+
 // Filters op basis van kijk-voortgang (niet op het handmatige Follow.status):
 //  - "watching" = nog minstens één ongeziene aflevering (nog niet uitgekeken)
 //  - "finished" = alle afleveringen gezien (bij)
@@ -28,7 +38,7 @@ export async function getSeriesLibraryPage(
   offset: number,
   take = PAGE_SIZE,
   filter: FollowFilter = "all",
-  providerId?: number
+  providerIds?: number[]
 ): Promise<SeriesCard[]> {
   const now = new Date();
 
@@ -47,9 +57,12 @@ export async function getSeriesLibraryPage(
   };
   const progressFilter =
     filter === "watching" ? hasUnwatched : filter === "finished" ? allWatched : undefined;
+  // Meerdere diensten = OR ("op Netflix óf Disney Plus"), niet AND.
   const showFilters = [
     progressFilter,
-    providerId ? { watchProviders: { some: { providerId } } } : undefined,
+    providerIds?.length
+      ? { watchProviders: { some: { providerId: { in: providerIds } } } }
+      : undefined,
   ].filter((f): f is NonNullable<typeof f> => f !== undefined);
 
   const follows = await prisma.follow.findMany({
@@ -129,11 +142,13 @@ export interface MovieCard {
   year: number | null;
 }
 
-export async function getWatchlistMovies(userId: string, providerId?: number): Promise<MovieCard[]> {
+export async function getWatchlistMovies(userId: string, providerIds?: number[]): Promise<MovieCard[]> {
   const rows = await prisma.watchlistMovie.findMany({
     where: {
       userId,
-      ...(providerId ? { movie: { watchProviders: { some: { providerId } } } } : {}),
+      ...(providerIds?.length
+        ? { movie: { watchProviders: { some: { providerId: { in: providerIds } } } } }
+        : {}),
     },
     orderBy: { addedAt: "desc" },
     select: {
@@ -149,12 +164,14 @@ export async function getWatchedMoviesPage(
   userId: string,
   offset: number,
   take = PAGE_SIZE,
-  providerId?: number
+  providerIds?: number[]
 ): Promise<MovieCard[]> {
   const rows = await prisma.watchedMovie.findMany({
     where: {
       userId,
-      ...(providerId ? { movie: { watchProviders: { some: { providerId } } } } : {}),
+      ...(providerIds?.length
+        ? { movie: { watchProviders: { some: { providerId: { in: providerIds } } } } }
+        : {}),
     },
     orderBy: { watchedAt: "desc" },
     skip: offset,

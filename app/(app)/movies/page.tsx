@@ -4,6 +4,7 @@ import {
   getWatchlistMovies,
   getWatchedMoviesPage,
   getMovieWatchProviderOptions,
+  parseProviderIds,
   PAGE_SIZE,
 } from "@/lib/library";
 import { MovieCard } from "@/app/(app)/_components/MovieCard";
@@ -28,14 +29,14 @@ export default async function MoviesPage({
   const filter: MovieFilter = FILTERS.some((f) => f.value === filterParam)
     ? (filterParam as MovieFilter)
     : "all";
-  const providerId = provider ? Number(provider) : undefined;
+  const providerIds = parseProviderIds(provider);
 
   const showWatchlist = filter === "all" || filter === "watchlist";
   const showWatched = filter === "all" || filter === "watched";
 
   const [watchlist, watchedFirst, providerOptions] = await Promise.all([
-    showWatchlist ? getWatchlistMovies(user.id, providerId) : Promise.resolve([]),
-    showWatched ? getWatchedMoviesPage(user.id, 0, PAGE_SIZE, providerId) : Promise.resolve([]),
+    showWatchlist ? getWatchlistMovies(user.id, providerIds) : Promise.resolve([]),
+    showWatched ? getWatchedMoviesPage(user.id, 0, PAGE_SIZE, providerIds) : Promise.resolve([]),
     getMovieWatchProviderOptions(user.id),
   ]);
 
@@ -50,7 +51,7 @@ export default async function MoviesPage({
           const active = f.value === filter;
           const params = new URLSearchParams();
           if (f.value !== "all") params.set("filter", f.value);
-          if (providerId) params.set("provider", String(providerId));
+          if (providerIds.length > 0) params.set("provider", providerIds.join(","));
           const qs = params.toString();
           return (
             <Link
@@ -72,7 +73,7 @@ export default async function MoviesPage({
       <ProviderFilterChips
         basePath="/movies"
         options={providerOptions}
-        active={providerId}
+        active={providerIds}
         otherParams={filter !== "all" ? { filter } : {}}
       />
 
@@ -126,9 +127,9 @@ export default async function MoviesPage({
             <h2 className="mb-3 text-sm font-medium text-(--color-muted)">Gezien</h2>
           )}
           <WatchedMoviesGrid
-            key={providerId ?? ""}
+            key={providerIds.join(",")}
             initialItems={watchedFirst}
-            providerId={providerId}
+            providerIds={providerIds}
             pageSize={PAGE_SIZE}
           />
         </section>
