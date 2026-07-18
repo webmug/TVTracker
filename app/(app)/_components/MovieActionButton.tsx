@@ -39,7 +39,7 @@ export function MovieActionButton({
           })
         }
         title="Markeer als gezien"
-        className={`${base} bg-[--color-accent] text-white hover:opacity-90`}
+        className={`${base} bg-(--color-accent) text-white hover:opacity-90`}
       >
         {pending ? "…" : "✓ Gezien"}
       </button>

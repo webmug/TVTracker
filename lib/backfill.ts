@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import { getShow, getMovie } from "@/lib/tmdb";
+import { getShow, getMovie, getWatchProviders } from "@/lib/tmdb";
+import { syncShowWatchProviders, syncMovieWatchProviders } from "@/lib/shows";
 
 // Eenmalige backfill van Show.imdbId / Movie.imdbId voor rijen die nog geen
 // IMDb-id hebben. Idempotent: pakt alleen rijen met imdbId = null, dus een
@@ -58,5 +59,59 @@ export async function backfillImdbIds(): Promise<void> {
     }
   } catch (e) {
     console.error("[backfill-imdb] mislukt:", (e as Error).message);
+  }
+}
+
+// Eenmalige backfill van ShowWatchProvider/MovieWatchProvider voor rijen die nog
+// geen enkele streamingdienst gecachet hebben. Nodig omdat syncShow/syncMovie een
+// cache-guard hebben (12u/7d), dus bestaande series/films krijgen de diensten
+// anders pas na een geforceerde re-sync. Idempotent: pakt alleen rijen zonder
+// watchProviders-rijen, dus een tweede run doet vrijwel niets. Wordt bij het
+// opstarten van de server één keer afgetrapt vanuit instrumentation.ts.
+let watchProvidersStarted = false;
+
+export async function backfillWatchProviders(): Promise<void> {
+  if (watchProvidersStarted) return;
+  watchProvidersStarted = true;
+
+  try {
+    const shows = await prisma.show.findMany({
+      where: { watchProviders: { none: {} } },
+      select: { id: true, tmdbId: true },
+    });
+    let showsUpdated = 0;
+    for (const show of shows) {
+      try {
+        const providers = await getWatchProviders(show.tmdbId, "tv");
+        await syncShowWatchProviders(show.id, providers);
+        if (providers) showsUpdated++;
+      } catch (e) {
+        console.warn(`[backfill-watch-providers] serie tv/${show.tmdbId}:`, (e as Error).message);
+      }
+    }
+
+    const movies = await prisma.movie.findMany({
+      where: { watchProviders: { none: {} } },
+      select: { id: true, tmdbId: true },
+    });
+    let moviesUpdated = 0;
+    for (const movie of movies) {
+      try {
+        const providers = await getWatchProviders(movie.tmdbId, "movie");
+        await syncMovieWatchProviders(movie.id, providers);
+        if (providers) moviesUpdated++;
+      } catch (e) {
+        console.warn(`[backfill-watch-providers] film movie/${movie.tmdbId}:`, (e as Error).message);
+      }
+    }
+
+    if (shows.length || movies.length) {
+      console.log(
+        `[backfill-watch-providers] klaar: ${showsUpdated}/${shows.length} series, ` +
+          `${moviesUpdated}/${movies.length} films bijgewerkt.`
+      );
+    }
+  } catch (e) {
+    console.error("[backfill-watch-providers] mislukt:", (e as Error).message);
   }
 }

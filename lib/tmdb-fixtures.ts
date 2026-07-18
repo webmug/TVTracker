@@ -178,18 +178,91 @@ function toRaw(i: FixtureItem) {
 }
 
 function tvDetails(i: FixtureItem | undefined, id: number) {
+  const status = i?.status ?? "Returning Series";
+  // Lopende series krijgen een volgende aflevering over 6 dagen, zodat het
+  // "Volgende aflevering"-blok op de seriepagina lokaal te zien is.
+  const nextAirDate = new Date(Date.now() + 6 * 86_400_000).toISOString().slice(0, 10);
+  const running = status !== "Ended" && status !== "Canceled";
   return {
     id,
     name: i?.title ?? `Serie ${id}`,
     overview: i?.overview ?? "",
     poster_path: i?.poster ?? null,
-    status: i?.status ?? "Returning Series",
+    status,
     first_air_date: i?.date ?? null,
     number_of_seasons: 1,
     seasons: [{ season_number: 1, episode_count: 0 }],
+    next_episode_to_air: running
+      ? {
+          id: id * 1000 + 1,
+          season_number: 2,
+          episode_number: 5,
+          name: "Het volgende hoofdstuk",
+          overview: "Een gloednieuwe aflevering, vers van de pers.",
+          air_date: nextAirDate,
+        }
+      : null,
     external_ids: { imdb_id: null },
   };
 }
+
+// Filmreeksen: welke fixture-film bij welke collection hoort + de reeks zelf.
+const COLLECTION_BY_MOVIE: Record<number, number> = {
+  155: 263, // The Dark Knight -> The Dark Knight Collection
+  603: 2344, // The Matrix -> The Matrix Collection
+};
+
+const COLLECTIONS: Record<
+  number,
+  { name: string; parts: { id: number; title: string; poster: string; date: string }[] }
+> = {
+  263: {
+    name: "The Dark Knight Collection",
+    parts: [
+      {
+        id: 272,
+        title: "Batman Begins",
+        poster: "/8RW2runSEc34IwKN2D1aPcJd2UL.jpg",
+        date: "2005-06-10",
+      },
+      {
+        id: 155,
+        title: "The Dark Knight",
+        poster: "/qJ2tW6WMUDux911r6m7haRef0WH.jpg",
+        date: "2008-07-16",
+      },
+      {
+        id: 49026,
+        title: "The Dark Knight Rises",
+        poster: "/85cWkCVftiVs0BVey6pxX8uNmLt.jpg",
+        date: "2012-07-16",
+      },
+    ],
+  },
+  2344: {
+    name: "The Matrix Collection",
+    parts: [
+      {
+        id: 603,
+        title: "The Matrix",
+        poster: "/f89U3ADr1oiB1s9GkdPOEpXUk5H.jpg",
+        date: "1999-03-31",
+      },
+      {
+        id: 604,
+        title: "The Matrix Reloaded",
+        poster: "/9TGHDvWrqKBzwDxDodHYXEmOE6J.jpg",
+        date: "2003-05-15",
+      },
+      {
+        id: 605,
+        title: "The Matrix Revolutions",
+        poster: "/fgm8OZ7o4G1G1I9EeGcb85Noe6L.jpg",
+        date: "2003-11-05",
+      },
+    ],
+  },
+};
 
 // Geeft een canned response terug voor het pad, of undefined als er geen fixture is
 // (de echte fetch neemt het dan over — al is dat zonder geldige key meestal leeg).
@@ -205,6 +278,24 @@ export function mockTmdb(path: string): unknown | undefined {
   const season = path.match(/^\/tv\/(\d+)\/season\/\d+$/);
   if (season) return { episodes: [] };
 
+  if (path.match(/\/watch\/providers$/)) return { results: {} };
+
+  const collection = path.match(/^\/collection\/(\d+)$/);
+  if (collection) {
+    const c = COLLECTIONS[Number(collection[1])];
+    if (!c) return { name: "", parts: [] };
+    return {
+      id: Number(collection[1]),
+      name: c.name,
+      parts: c.parts.map((p) => ({
+        id: p.id,
+        title: p.title,
+        poster_path: p.poster,
+        release_date: p.date,
+      })),
+    };
+  }
+
   const tv = path.match(/^\/tv\/(\d+)$/);
   if (tv) {
     const id = Number(tv[1]);
@@ -214,6 +305,7 @@ export function mockTmdb(path: string): unknown | undefined {
   if (movie) {
     const id = Number(movie[1]);
     const i = BY_ID.get(`movie-${id}`);
+    const collectionId = COLLECTION_BY_MOVIE[id];
     return {
       id,
       title: i?.title ?? `Film ${id}`,
@@ -222,6 +314,9 @@ export function mockTmdb(path: string): unknown | undefined {
       release_date: i?.date ?? null,
       status: i?.status ?? "Released",
       imdb_id: null,
+      belongs_to_collection: collectionId
+        ? { id: collectionId, name: COLLECTIONS[collectionId].name }
+        : null,
     };
   }
 

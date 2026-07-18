@@ -61,7 +61,7 @@ export function InfiniteGrid<T>({
         ))}
       </div>
       {!done && (
-        <div ref={sentinelRef} className="py-8 text-center text-sm text-[--color-muted]">
+        <div ref={sentinelRef} className="py-8 text-center text-sm text-(--color-muted)">
           {loading ? "Laden…" : ""}
         </div>
       )}

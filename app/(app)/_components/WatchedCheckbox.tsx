@@ -27,7 +27,7 @@ export function WatchedCheckbox({
       className={
         "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-sm transition disabled:opacity-50 " +
         (watched
-          ? "border-[--color-accent] bg-[--color-accent] text-white"
+          ? "border-(--color-accent) bg-(--color-accent) text-white"
           : "border-white/20 text-transparent hover:border-white/50")
       }
     >

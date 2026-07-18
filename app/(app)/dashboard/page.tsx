@@ -125,14 +125,14 @@ export default async function DashboardPage() {
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-8">
         <div>
           {followCount === 0 && (
-            <div className="rounded-xl border border-white/10 bg-[--color-panel] p-6 text-center">
-              <p className="text-[--color-muted]">
+            <div className="rounded-xl border border-white/10 bg-(--color-panel) p-6 text-center">
+              <p className="text-(--color-muted)">
                 Je volgt nog geen series.{" "}
-                <Link href="/search" className="text-[--color-accent] underline">
+                <Link href="/search" className="text-(--color-accent) underline">
                   Zoek er een
                 </Link>{" "}
                 of{" "}
-                <Link href="/import" className="text-[--color-accent] underline">
+                <Link href="/import" className="text-(--color-accent) underline">
                   importeer je TV Time-historie
                 </Link>
                 .
@@ -163,7 +163,7 @@ export default async function DashboardPage() {
           )}
 
           {upNext.length === 0 && followCount > 0 && (
-            <p className="text-[--color-muted]">
+            <p className="text-(--color-muted)">
               Helemaal bij! Geen ongeziene uitgezonden afleveringen. 🎉
             </p>
           )}
@@ -178,7 +178,7 @@ export default async function DashboardPage() {
                 return (
                   <li
                     key={`${u.tmdbId}-${u.label}`}
-                    className="flex items-center gap-3 rounded-lg border border-white/10 bg-[--color-panel] p-2"
+                    className="flex items-center gap-3 rounded-lg border border-white/10 bg-(--color-panel) p-2"
                   >
                     <Link href={`/show/${u.tmdbId}`} className="shrink-0">
                       {poster ? (
@@ -190,7 +190,7 @@ export default async function DashboardPage() {
                           className="h-15 w-10 rounded object-cover"
                         />
                       ) : (
-                        <div className="flex h-15 w-10 items-center justify-center rounded bg-[--color-panel2] text-sm">
+                        <div className="flex h-15 w-10 items-center justify-center rounded bg-(--color-panel2) text-sm">
                           📺
                         </div>
                       )}
@@ -202,11 +202,11 @@ export default async function DashboardPage() {
                       >
                         {u.showName}
                       </Link>
-                      <p className="truncate text-xs text-[--color-muted]">
+                      <p className="truncate text-xs text-(--color-muted)">
                         {u.label}
                         {u.epName ? ` · ${u.epName}` : ""}
                       </p>
-                      <p className="text-xs text-[--color-muted]">
+                      <p className="text-xs text-(--color-muted)">
                         {u.airDate.toLocaleDateString("nl-NL", { day: "numeric", month: "short" })}
                       </p>
                     </div>

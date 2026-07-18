@@ -6,6 +6,16 @@ import { prisma } from "@/lib/prisma";
 
 export const PAGE_SIZE = 40;
 
+// Parseert de `?provider=8,337`-queryparam (kan ook één id zijn) naar een lijst
+// geldige TMDB-provider-ids, voor de multi-select streamingdienst-filters.
+export function parseProviderIds(param: string | undefined): number[] {
+  if (!param) return [];
+  return param
+    .split(",")
+    .map((s) => Number(s))
+    .filter((n) => Number.isInteger(n) && n > 0);
+}
+
 // Filters op basis van kijk-voortgang (niet op het handmatige Follow.status):
 //  - "watching" = nog minstens één ongeziene aflevering (nog niet uitgekeken)
 //  - "finished" = alle afleveringen gezien (bij)
@@ -22,12 +32,13 @@ export interface SeriesCard {
 }
 
 // Eén pagina gevolgde series met voortgang (gezien/totaal), ongeacht status
-// (of gefilterd op status). Nieuwste follows eerst.
+// (of gefilterd op status/streamingdienst). Nieuwste follows eerst.
 export async function getSeriesLibraryPage(
   userId: string,
   offset: number,
   take = PAGE_SIZE,
-  filter: FollowFilter = "all"
+  filter: FollowFilter = "all",
+  providerIds?: number[]
 ): Promise<SeriesCard[]> {
   const now = new Date();
 
@@ -44,13 +55,20 @@ export async function getSeriesLibraryPage(
       { episodes: { none: { AND: [aired, { watched: { none: { userId } } }] } } },
     ],
   };
-  const showFilter =
+  const progressFilter =
     filter === "watching" ? hasUnwatched : filter === "finished" ? allWatched : undefined;
+  // Meerdere diensten = OR ("op Netflix óf Disney Plus"), niet AND.
+  const showFilters = [
+    progressFilter,
+    providerIds?.length
+      ? { watchProviders: { some: { providerId: { in: providerIds } } } }
+      : undefined,
+  ].filter((f): f is NonNullable<typeof f> => f !== undefined);
 
   const follows = await prisma.follow.findMany({
     where: {
       userId,
-      ...(showFilter ? { show: showFilter } : {}),
+      ...(showFilters.length > 0 ? { show: { AND: showFilters } } : {}),
     },
     orderBy: { createdAt: "desc" },
     skip: offset,
@@ -124,9 +142,14 @@ export interface MovieCard {
   year: number | null;
 }
 
-export async function getWatchlistMovies(userId: string): Promise<MovieCard[]> {
+export async function getWatchlistMovies(userId: string, providerIds?: number[]): Promise<MovieCard[]> {
   const rows = await prisma.watchlistMovie.findMany({
-    where: { userId },
+    where: {
+      userId,
+      ...(providerIds?.length
+        ? { movie: { watchProviders: { some: { providerId: { in: providerIds } } } } }
+        : {}),
+    },
     orderBy: { addedAt: "desc" },
     select: {
       movie: {
@@ -140,10 +163,16 @@ export async function getWatchlistMovies(userId: string): Promise<MovieCard[]> {
 export async function getWatchedMoviesPage(
   userId: string,
   offset: number,
-  take = PAGE_SIZE
+  take = PAGE_SIZE,
+  providerIds?: number[]
 ): Promise<MovieCard[]> {
   const rows = await prisma.watchedMovie.findMany({
-    where: { userId },
+    where: {
+      userId,
+      ...(providerIds?.length
+        ? { movie: { watchProviders: { some: { providerId: { in: providerIds } } } } }
+        : {}),
+    },
     orderBy: { watchedAt: "desc" },
     skip: offset,
     take,
@@ -174,4 +203,37 @@ function toMovieCard(m: {
     posterPath: m.posterPath,
     year: m.releaseDate?.getFullYear() ?? null,
   };
+}
+
+export interface WatchProviderOption {
+  id: number;
+  name: string;
+  logoPath: string | null;
+}
+
+// Streamingdiensten die daadwerkelijk voorkomen in de gevolgde series van deze
+// gebruiker, voor de filterchips op /series. Alfabetisch gesorteerd.
+export async function getSeriesWatchProviderOptions(userId: string): Promise<WatchProviderOption[]> {
+  const rows = await prisma.showWatchProvider.findMany({
+    where: { show: { follows: { some: { userId } } } },
+    distinct: ["providerId"],
+    orderBy: { providerName: "asc" },
+    select: { providerId: true, providerName: true, logoPath: true },
+  });
+  return rows.map((r) => ({ id: r.providerId, name: r.providerName, logoPath: r.logoPath }));
+}
+
+// Idem, maar over de filmbibliotheek (watchlist + gezien) van deze gebruiker.
+export async function getMovieWatchProviderOptions(userId: string): Promise<WatchProviderOption[]> {
+  const rows = await prisma.movieWatchProvider.findMany({
+    where: {
+      movie: {
+        OR: [{ watchlist: { some: { userId } } }, { watched: { some: { userId } } }],
+      },
+    },
+    distinct: ["providerId"],
+    orderBy: { providerName: "asc" },
+    select: { providerId: true, providerName: true, logoPath: true },
+  });
+  return rows.map((r) => ({ id: r.providerId, name: r.providerName, logoPath: r.logoPath }));
 }

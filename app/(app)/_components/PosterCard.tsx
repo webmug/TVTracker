@@ -30,7 +30,7 @@ export function PosterCard({
   const poster = posterUrl(posterPath, "w342");
 
   const image = (
-    <div className="relative aspect-[2/3] w-full overflow-hidden rounded-xl border border-white/10 bg-[--color-panel2]">
+    <div className="relative aspect-[2/3] w-full overflow-hidden rounded-xl border border-white/10 bg-(--color-panel2)">
       {poster ? (
         <Image
           src={poster}
@@ -68,7 +68,7 @@ export function PosterCard({
             title
           )}
         </p>
-        {subtitle && <p className="truncate text-xs text-[--color-muted]">{subtitle}</p>}
+        {subtitle && <p className="truncate text-xs text-(--color-muted)">{subtitle}</p>}
         {links != null && <div className="mt-1">{links}</div>}
       </div>
     </div>

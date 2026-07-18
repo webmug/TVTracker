@@ -65,6 +65,7 @@ export async function checkNewEpisodes(): Promise<NotifyResult> {
       show: {
         select: {
           name: true,
+          posterPath: true,
           episodes: {
             where: { airDate: { lte: now } },
             orderBy: [{ season: "asc" }, { number: "asc" }],
@@ -96,6 +97,7 @@ export async function checkNewEpisodes(): Promise<NotifyResult> {
     }
     bucket.shows.push({
       showName: f.show.name,
+      posterPath: f.show.posterPath,
       episodes: fresh.map((e) => ({
         label: epLabel(e.season, e.number),
         name: e.name,
@@ -150,6 +152,7 @@ export async function sendWeeklyDigest(): Promise<NotifyResult> {
       show: {
         select: {
           name: true,
+          posterPath: true,
           episodes: {
             where: { airDate: { gte: weekAgo, lte: now } },
             orderBy: [{ season: "asc" }, { number: "asc" }],
@@ -176,6 +179,7 @@ export async function sendWeeklyDigest(): Promise<NotifyResult> {
     }
     bucket.shows.push({
       showName: f.show.name,
+      posterPath: f.show.posterPath,
       episodes: fresh.map((e) => ({
         label: epLabel(e.season, e.number),
         name: e.name,

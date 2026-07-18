@@ -5,11 +5,11 @@ import { signIn, auth } from "@/lib/auth";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; email?: string }>;
 }) {
   const session = await auth();
   if (session?.user) redirect("/dashboard");
-  const { error } = await searchParams;
+  const { error, email } = await searchParams;
 
   async function login(formData: FormData) {
     "use server";
@@ -30,7 +30,7 @@ export default async function LoginPage({
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
       <h1 className="text-2xl font-semibold">📺 TV Tracker</h1>
-      <p className="mt-2 text-[--color-muted]">
+      <p className="mt-2 text-(--color-muted)">
         Log in met je e-mailadres. Je krijgt een inloglink toegestuurd.
       </p>
 
@@ -45,18 +45,19 @@ export default async function LoginPage({
           type="email"
           name="email"
           required
+          defaultValue={email || ""}
           placeholder="jij@voorbeeld.nl"
-          className="rounded-lg border border-white/10 bg-[--color-panel] px-4 py-3 outline-none focus:border-[--color-accent]"
+          className="rounded-lg border border-white/10 bg-(--color-panel) px-4 py-3 outline-none focus:border-(--color-accent)"
         />
         <button
           type="submit"
-          className="rounded-lg bg-[--color-accent] px-4 py-3 font-medium text-white hover:opacity-90"
+          className="rounded-lg bg-(--color-accent) px-4 py-3 font-medium text-white hover:opacity-90"
         >
           Stuur inloglink
         </button>
       </form>
 
-      <p className="mt-6 text-xs text-[--color-muted]">
+      <p className="mt-6 text-xs text-(--color-muted)">
         Alleen genodigden kunnen inloggen. Toegang is invite-only.
       </p>
     </main>

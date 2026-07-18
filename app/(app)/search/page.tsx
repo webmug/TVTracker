@@ -85,9 +85,9 @@ export default async function SearchPage({
           name="q"
           defaultValue={query}
           placeholder="Titel, bv. Severance of Dune"
-          className="flex-1 rounded-lg border border-white/10 bg-[--color-panel] px-4 py-3 outline-none focus:border-[--color-accent]"
+          className="flex-1 rounded-lg border border-white/10 bg-(--color-panel) px-4 py-3 outline-none focus:border-(--color-accent)"
         />
-        <button className="rounded-lg bg-[--color-accent] px-5 py-3 font-medium text-white">
+        <button className="rounded-lg bg-(--color-accent) px-5 py-3 font-medium text-white">
           Zoek
         </button>
       </form>
@@ -105,8 +105,8 @@ export default async function SearchPage({
               className={
                 "rounded-full px-3 py-1.5 text-sm " +
                 (active
-                  ? "bg-[--color-accent] text-white"
-                  : "border border-white/15 text-[--color-muted] hover:text-white")
+                  ? "bg-(--color-accent) text-white"
+                  : "border border-white/15 text-(--color-muted) hover:text-white")
               }
             >
               {t.label}
@@ -116,7 +116,7 @@ export default async function SearchPage({
       </div>
 
       {query && results.length === 0 && (
-        <p className="text-[--color-muted]">Geen resultaten voor “{query}”.</p>
+        <p className="text-(--color-muted)">Geen resultaten voor “{query}”.</p>
       )}
 
       {results.length > 0 && (

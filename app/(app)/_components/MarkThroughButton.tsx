@@ -16,7 +16,7 @@ export function MarkThroughButton({
       disabled={pending}
       title="Markeer alles t/m deze aflevering als gezien"
       onClick={() => start(async () => markWatchedThrough(tmdbId, episodeId))}
-      className="text-xs text-[--color-muted] underline decoration-dotted hover:text-white disabled:opacity-50"
+      className="text-xs text-(--color-muted) underline decoration-dotted hover:text-white disabled:opacity-50"
     >
       {pending ? "…" : "t/m hier"}
     </button>
