@@ -3,6 +3,11 @@
 > **Status: vastgelegd, nog niet uitgevoerd.** Opgesteld 18 juli 2026. Niets in deze repo is voor dit
 > plan gewijzigd — het is een ontwerp voor later. Begin bij fase 0; die is losstaand waardevol en
 > verandert geen gedrag.
+>
+> **Let op:** het onderzoek is gedaan op commit `db4a68c`, terwijl `main` toen al 15 commits verder
+> was (streamingdiensten, filmreeksen, mobiel menu, e-mailtemplates). De architectuur hieronder staat
+> nog steeds, maar de inventarislijsten niet. **Lees de [delta-sectie](#delta-wat-er-sinds-db4a68c-is-bijgekomen)
+> onderaan vóór je begint** — die corrigeert de endpoint-lijst, de DTO-opsomming en de fase-0-bestandslijst.
 
 ## Context
 
@@ -416,3 +421,95 @@ conflictresolutie en geen id-hermapping nodig.
   waar de sandbox/production-mismatch zich verstopt). `node --env-file=.env scripts/trigger-cron.mjs`
   om de job handmatig te vuren en te controleren dat mail én push aankomen en de cursor één keer
   opschuift.
+
+---
+
+## Delta: wat er sinds `db4a68c` is bijgekomen
+
+Het onderzoek voor dit plan draaide op `db4a68c`, maar `main` stond toen al op `b733786` — 15 commits
+verder. Deze sectie corrigeert de lijsten hierboven. **De architectuur verandert niet**: de fasering,
+de auth-handoff, de identifier-keuze (`tmdbId` + `(season, number)`) en de TestFlight-afweging staan
+allemaal nog. Wat verandert is de inventaris.
+
+Het grootste deel van het nieuwe werk draait om **streamingdiensten** ("Kijken via", TMDB
+watch/providers via JustWatch, regio NL), gecachet in de eigen database in plaats van live opgehaald.
+
+### Datamodel
+
+Twee nieuwe modellen in `prisma/schema.prisma`, allebei een cache van TMDB, cascade op de parent:
+
+```prisma
+model ShowWatchProvider  { id, showId,  providerId Int, providerName String, logoPath String? }
+model MovieWatchProvider { id, movieId, providerId Int, providerName String, logoPath String? }
+```
+`Show.watchProviders` en `Movie.watchProviders` zijn de bijbehorende relaties. Migratie:
+`prisma/migrations/20260716191733_add_watch_providers/`. Er is ook een eenmalig backfill-script,
+`scripts/backfill-watch-providers.mjs`.
+
+**Goed nieuws voor de API**: `SeriesCard` en `MovieCard` in `lib/library.ts` zijn qua vorm
+**ongewijzigd**. De DTO-keuze in fase 1–2 blijft dus intact; providers komen alleen in de
+detail-responses en als filter-parameter terug.
+
+### Nieuwe/gewijzigde library-functies (raakt fase 0)
+
+`lib/library.ts` — drie functies kregen een optionele `providerIds?: number[]` als laatste argument:
+`getSeriesLibraryPage`, `getWatchlistMovies`, `getWatchedMoviesPage`. Nieuw daar:
+`parseProviderIds(param)`, `getSeriesWatchProviderOptions(userId)`, `getMovieWatchProviderOptions(userId)`
+en het type `WatchProviderOption { id, name, logoPath }`.
+
+`lib/tmdb.ts` — nieuw: `getWatchProviders(tmdbId, kind)`, `getMovieCollection(tmdbId)`, en de types
+`WatchProvider`, `WatchProviders`, `CollectionPart`, `MovieCollection`.
+
+`lib/shows.ts` — nieuw: `syncShowWatchProviders(showId, providers)`,
+`syncMovieWatchProviders(movieId, providers)`. Worden vanuit `syncShow`/`syncMovie` aangeroepen, dus
+het `?sync=0`-argument uit fase 1–2 telt nu zwaarder: een sync doet er een providers-fetch bij.
+
+`app/(app)/actions.ts` — twee nieuwe *read*-actions, die lazy vanuit de filmmodal worden aangeroepen:
+`getMovieWatchProviders(tmdbId)` en `getMovieCollectionInfo(tmdbId)` (geeft per deel van de reeks ook
+de watchlist/gezien-status van de gebruiker mee). `loadMoreSeries` en `loadMoreWatchedMovies` hebben
+er een `providerIds`-parameter bij.
+
+`lib/notify.ts` — `NewEpisodeMail` draagt nu `posterPath`, want de mails tonen de serieposter. Voor
+fase 6 is dat meegenomen winst: diezelfde `posterPath` kan als APNs-attachment mee in de
+rich notification.
+
+### Correcties op de fase-0-lijst
+
+Voeg toe: **`lib/services/providers.ts`** met `getSeriesProviderOptions(userId)` en
+`getMovieProviderOptions(userId)`. De twee nieuwe read-actions horen thuis in
+`lib/services/movies.ts` (`getMovieDetail`, zie hieronder) in plaats van als losse actions te blijven
+bestaan — anders ontstaat precies de duplicatie die fase 0 wil voorkomen.
+
+### Correcties op de endpoint-lijst
+
+```
+GET  /series?…&providers=8,9            providerIds via parseProviderIds
+GET  /movies/watchlist?providers=…
+GET  /movies/watched?…&providers=…
+GET  /series/providers                  → {items: WatchProviderOption[]}   (filter-chips)
+GET  /movies/providers                  → {items: WatchProviderOption[]}
+GET  /shows/{tmdbId}                    ShowDetail krijgt watchProviders: WatchProvider[]
+GET  /movies/{tmdbId}                   NIEUW → {movie, watchProviders, collection}
+```
+
+**`GET /movies/{tmdbId}` is een echt gat in het oorspronkelijke plan.** Dat ging ervan uit dat films
+geen detailweergave hadden — inmiddels wel: een modal met streamingdiensten én de filmreeks, allebei
+lazy geladen. Op het web zijn dat twee losse round-trips; in de app moet dat één response zijn, want
+twee sequentiële calls bij het openen van een sheet voelt traag op mobiel.
+
+### Gevolgen voor de SPA (fase 4)
+
+- **`MobileNav.tsx` en `NavLink.tsx` zijn nieuw**: het web heeft nu een uitklapbaar linkermenu op
+  mobiel, dat het oude dropdown verving. Dat overlapt met de tab-bar die dit plan voorstelt. Kies
+  bewust: de tab-bar blijft de betere native keuze (permanent zichtbaar, duimbereik), dus de SPA
+  neemt `MobileNav` **niet** over. Wel eerst even in de webapp kijken hoe de indeling nu loopt, zodat
+  de app-navigatie niet ineens anders geordend is dan het web.
+- **`ProviderFilterChips.tsx` en `WatchProvidersList.tsx`** zijn nieuwe componenten die de SPA nodig
+  heeft; ze horen bij de "forken"-categorie uit fase 4.
+- De filmmodal is inmiddels rijker (providers + reeks) dan waar het plan van uitging. De bottom sheet
+  in de SPA moet die twee blokken dus ook tonen.
+
+### Aanbevolen eerste stap bij hervatting
+
+Draai eerst `git log --oneline db4a68c..HEAD` en `git diff db4a68c..HEAD --stat` om te zien of er ná
+deze delta nóg meer bij is gekomen. Deze sectie is bijgewerkt tot `45a5c83` (18 juli 2026).
