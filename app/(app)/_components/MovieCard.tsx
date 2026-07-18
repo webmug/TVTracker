@@ -4,10 +4,12 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { posterUrl, type WatchProviders } from "@/lib/tmdb";
-import { getMovieWatchProviders } from "@/app/(app)/actions";
+import { getMovieWatchProviders, getMovieCollectionInfo } from "@/app/(app)/actions";
 import { MovieActionButton } from "@/app/(app)/_components/MovieActionButton";
 import { ExternalLinks } from "@/app/(app)/_components/ExternalLinks";
 import { WatchProvidersList } from "@/app/(app)/_components/WatchProvidersList";
+
+type CollectionInfo = Awaited<ReturnType<typeof getMovieCollectionInfo>>;
 
 // Filmkaart voor Verken. Films hebben geen eigen detailpagina, dus de poster opent
 // een modal met de samenvatting en extra details. De actie-knoppen (watchlist/gezien)
@@ -31,6 +33,7 @@ export function MovieCard({
 }) {
   const [open, setOpen] = useState(false);
   const [providers, setProviders] = useState<WatchProviders | null>(null);
+  const [collection, setCollection] = useState<CollectionInfo>(null);
   const poster = posterUrl(posterPath, "w342");
   const posterLarge = posterUrl(posterPath, "w500");
 
@@ -41,6 +44,9 @@ export function MovieCard({
     let cancelled = false;
     getMovieWatchProviders(tmdbId).then((p) => {
       if (!cancelled) setProviders(p);
+    });
+    getMovieCollectionInfo(tmdbId).then((c) => {
+      if (!cancelled) setCollection(c);
     });
     return () => {
       cancelled = true;
@@ -131,6 +137,55 @@ export function MovieCard({
               <div className="mt-4">
                 <WatchProvidersList providers={providers} />
               </div>
+
+              {collection && (
+                <div className="mt-5">
+                  <p className="text-[10px] uppercase tracking-wide text-(--color-muted)">
+                    Filmreeks
+                  </p>
+                  <h3 className="mb-2 text-sm font-semibold">{collection.name}</h3>
+                  <div className="flex gap-3 overflow-x-auto pb-1">
+                    {collection.parts.map((p) => {
+                      const partPoster = posterUrl(p.posterPath, "w185");
+                      const isCurrent = p.tmdbId === tmdbId;
+                      return (
+                        <div key={p.tmdbId} className="w-24 shrink-0">
+                          <div
+                            className={`relative aspect-[2/3] overflow-hidden rounded-lg border bg-(--color-panel2) ${
+                              isCurrent ? "border-(--color-accent)" : "border-white/10"
+                            }`}
+                          >
+                            {partPoster ? (
+                              <Image
+                                src={partPoster}
+                                alt={p.title}
+                                fill
+                                sizes="96px"
+                                className="object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-2xl">
+                                🎬
+                              </div>
+                            )}
+                            {!isCurrent && (
+                              <div className="absolute bottom-1 right-1">
+                                <MovieActionButton tmdbId={p.tmdbId} initial={p.state} compact />
+                              </div>
+                            )}
+                          </div>
+                          <p className="mt-1 truncate text-xs font-medium" title={p.title}>
+                            {p.title}
+                          </p>
+                          {p.year && (
+                            <p className="text-[10px] text-(--color-muted)">{p.year}</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

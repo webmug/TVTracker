@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { syncShow, syncMovie } from "@/lib/shows";
-import { getWatchProviders, type WatchProviders } from "@/lib/tmdb";
+import { getWatchProviders, getMovieCollection, type WatchProviders } from "@/lib/tmdb";
 import {
   getSeriesLibraryPage,
   getWatchedMoviesPage,
@@ -218,4 +218,36 @@ export async function loadMoreWatchedMovies(
 export async function getMovieWatchProviders(tmdbId: number): Promise<WatchProviders | null> {
   await requireUser();
   return getWatchProviders(tmdbId, "movie").catch(() => null);
+}
+
+// Filmreeks (TMDB-collection) voor de filmdetailmodal: vervolgen/prequels, bv. een
+// trilogie. Lazy vanuit de client, net als de streamingdiensten. Per deel geven we
+// de watchlist/gezien-status van de gebruiker mee zodat de knoppen goed staan.
+export async function getMovieCollectionInfo(tmdbId: number) {
+  const user = await requireUser();
+  const collection = await getMovieCollection(tmdbId).catch(() => null);
+  if (!collection) return null;
+
+  const known = await prisma.movie.findMany({
+    where: { tmdbId: { in: collection.parts.map((p) => p.tmdbId) } },
+    select: {
+      tmdbId: true,
+      watched: { where: { userId: user.id }, select: { id: true } },
+      watchlist: { where: { userId: user.id }, select: { id: true } },
+    },
+  });
+  const stateByTmdbId = new Map<number, "none" | "watchlist" | "watched">(
+    known.map((m) => [
+      m.tmdbId,
+      m.watched.length > 0 ? "watched" : m.watchlist.length > 0 ? "watchlist" : "none",
+    ])
+  );
+
+  return {
+    name: collection.name,
+    parts: collection.parts.map((p) => ({
+      ...p,
+      state: stateByTmdbId.get(p.tmdbId) ?? ("none" as const),
+    })),
+  };
 }

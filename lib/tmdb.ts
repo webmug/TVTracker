@@ -23,6 +23,9 @@ async function tmdb<T>(path: string, params: Record<string, string | number> = {
   }
   const { headers, query } = authParams();
   const usp = new URLSearchParams();
+  // Metadata standaard in het Nederlands (valt bij TMDB terug op Engels als er
+  // geen vertaling is). Individuele calls kunnen dit via params overschrijven.
+  usp.set("language", "nl-NL");
   for (const [k, v] of Object.entries(params)) usp.set(k, String(v));
   if (query) usp.set("api_key", query.split("=")[1]);
   const url = `${BASE}${path}?${usp.toString()}`;
@@ -50,6 +53,8 @@ export interface TmdbShowDetails {
   first_air_date: string | null;
   number_of_seasons: number;
   seasons: { season_number: number; episode_count: number }[];
+  // Eerstvolgende geplande aflevering; alleen gevuld bij lopende series.
+  next_episode_to_air?: TmdbEpisode | null;
   // Via append_to_response=external_ids; imdb_id bv. "tt1234567".
   external_ids?: { imdb_id: string | null };
 }
@@ -88,6 +93,8 @@ export interface TmdbMovieDetails extends TmdbMovieResult {
   status: string | null;
   // /movie/{id} levert imdb_id direct mee (bv. "tt1234567").
   imdb_id?: string | null;
+  // Filmreeks (TMDB-collection) waar de film bij hoort, bv. een trilogie.
+  belongs_to_collection?: { id: number; name: string } | null;
 }
 
 export async function searchMovies(query: string): Promise<TmdbMovieResult[]> {
@@ -227,6 +234,43 @@ export async function getAllEpisodes(details: TmdbShowDetails): Promise<TmdbEpis
     all.push(...eps);
   }
   return all;
+}
+
+// ---------------------------------------------------------------------------
+// Filmreeksen (TMDB-collections): vervolgen/prequels van een film, bv. een
+// trilogie. We halen de reeks op via de film zelf (belongs_to_collection).
+// ---------------------------------------------------------------------------
+
+export interface CollectionPart {
+  tmdbId: number;
+  title: string;
+  posterPath: string | null;
+  year: string | null;
+}
+
+export interface MovieCollection {
+  name: string;
+  // Chronologisch (op releasedatum), inclusief de film zelf.
+  parts: CollectionPart[];
+}
+
+export async function getMovieCollection(tmdbId: number): Promise<MovieCollection | null> {
+  const movie = await getMovie(tmdbId);
+  const ref = movie.belongs_to_collection;
+  if (!ref) return null;
+  const data = await tmdb<{ name: string; parts?: RawMediaResult[] }>(`/collection/${ref.id}`);
+  const parts = (data.parts ?? [])
+    .slice()
+    .sort((a, b) => (a.release_date || "9999").localeCompare(b.release_date || "9999"))
+    .map((p) => ({
+      tmdbId: p.id,
+      title: p.title ?? p.name ?? "",
+      posterPath: p.poster_path ?? null,
+      year: p.release_date ? p.release_date.slice(0, 4) : null,
+    }));
+  // Een reeks met alleen de film zelf is geen reeks.
+  if (parts.length < 2) return null;
+  return { name: data.name, parts };
 }
 
 // ---------------------------------------------------------------------------
