@@ -55,6 +55,7 @@ export default async function DashboardPage() {
   ]);
 
   type Row = {
+    showId: string;
     tmdbId: number;
     showName: string;
     posterPath: string | null;
@@ -85,6 +86,7 @@ export default async function DashboardPage() {
     if (firstAiredSeen.has(e.showId)) continue;
     firstAiredSeen.add(e.showId);
     upNext.push({
+      showId: e.showId,
       tmdbId: e.show.tmdbId,
       showName: e.show.name,
       posterPath: e.show.posterPath,
@@ -111,12 +113,30 @@ export default async function DashboardPage() {
     });
   }
 
-  upNext.sort((a, b) => (b.airDate?.getTime() ?? 0) - (a.airDate?.getTime() ?? 0));
-  upcoming.sort((a, b) => a.airDate.getTime() - b.airDate.getTime());
+  // Sorteren op de laatst uitgezonden aflevering van de *serie*, niet op die van je
+  // eerstvolgende ongeziene aflevering: anders zakt een serie waarop je achterloopt naar
+  // de bodem, juist terwijl hij nog nieuwe afleveringen uitzendt. Aparte query, want die
+  // laatste aflevering kan al gezien zijn en zit dan niet in `airedUnwatched`.
+  const [lastAiredRows, followCount] = await Promise.all([
+    prisma.episode.groupBy({
+      by: ["showId"],
+      where: { showId: { in: upNext.map((r) => r.showId) }, airDate: { lte: now } },
+      _max: { airDate: true },
+    }),
+    prisma.follow.count({
+      where: { userId: user.id, status: { in: activeStatuses } },
+    }),
+  ]);
+  const lastAiredByShow = new Map(
+    lastAiredRows.map((r) => [r.showId, r._max.airDate?.getTime() ?? 0])
+  );
 
-  const followCount = await prisma.follow.count({
-    where: { userId: user.id, status: { in: ["WATCHING", "PAUSED"] } },
+  upNext.sort((a, b) => {
+    const diff = (lastAiredByShow.get(b.showId) ?? 0) - (lastAiredByShow.get(a.showId) ?? 0);
+    // Serienaam als tiebreak, zodat de volgorde stabiel is tussen renders.
+    return diff !== 0 ? diff : a.showName.localeCompare(b.showName, "nl");
   });
+  upcoming.sort((a, b) => a.airDate.getTime() - b.airDate.getTime());
 
   return (
     <main>

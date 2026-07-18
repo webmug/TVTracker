@@ -32,7 +32,7 @@ export interface SeriesCard {
 }
 
 // Eén pagina gevolgde series met voortgang (gezien/totaal), ongeacht status
-// (of gefilterd op status/streamingdienst). Nieuwste follows eerst.
+// (of gefilterd op status/streamingdienst). Alfabetisch op serienaam.
 export async function getSeriesLibraryPage(
   userId: string,
   offset: number,
@@ -70,7 +70,9 @@ export async function getSeriesLibraryPage(
       userId,
       ...(showFilters.length > 0 ? { show: { AND: showFilters } } : {}),
     },
-    orderBy: { createdAt: "desc" },
+    // Alfabetisch: voorspelbaar terug te vinden. Sorteren op volgvolgorde (createdAt) was
+    // in de praktijk willekeurig, omdat een TV Time-import alle follows tegelijk aanmaakt.
+    orderBy: { show: { name: "asc" } },
     skip: offset,
     take,
     select: {
