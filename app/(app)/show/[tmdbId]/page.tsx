@@ -184,6 +184,7 @@ export default async function ShowPage({
                 number: e.number,
                 name: e.name,
                 airDate: e.airDate,
+                overview: e.overview,
               }))}
               watchedIds={eps.filter((e) => watched.has(e.id)).map((e) => e.id)}
             />
