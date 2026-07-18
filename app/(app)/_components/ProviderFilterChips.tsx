@@ -9,9 +9,8 @@ import type { WatchProviderOption } from "@/lib/library";
 // Multi-select filterchips op streamingdienst voor /series en /movies (OR: "op
 // Netflix óf Disney Plus"). Toont alleen diensten die daadwerkelijk in de
 // bibliotheek van de gebruiker voorkomen; verbergt zich helemaal als er geen is.
-// Inklapbaar voor overzicht: standaard dicht zodra er al diensten geselecteerd
-// zijn (bv. na een paginalading vanaf een gedeelde link), open als er nog niets
-// gekozen is.
+// Inklapbaar voor overzicht: standaard dicht (de chiplijst neemt anders veel
+// ruimte in); ingeklapt blijven geselecteerde diensten wel zichtbaar.
 export function ProviderFilterChips({
   basePath,
   options,
@@ -23,7 +22,7 @@ export function ProviderFilterChips({
   active: number[];
   otherParams?: Record<string, string>;
 }) {
-  const [open, setOpen] = useState(active.length === 0);
+  const [open, setOpen] = useState(false);
 
   if (options.length === 0) return null;
 
