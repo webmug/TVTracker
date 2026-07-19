@@ -279,6 +279,9 @@ export function mockTmdb(path: string): unknown | undefined {
   if (season) return { episodes: [] };
 
   if (path.match(/\/watch\/providers$/)) return { results: {} };
+  // Zonder deze regel valt de trailer-call terug op het echte TMDB en klapt hij
+  // in mock-modus op een ontbrekende API-key.
+  if (path.match(/\/videos$/)) return { results: [] };
 
   const collection = path.match(/^\/collection\/(\d+)$/);
   if (collection) {

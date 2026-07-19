@@ -36,6 +36,8 @@ export function MovieCard({
   // film die de modal nú toont, de props blijven die van de kaart zelf.
   const [activeId, setActiveId] = useState(tmdbId);
   const [details, setDetails] = useState<ModalDetails | null>(null);
+  // Status van déze film, gedeeld door de knop op de kaart en die in de modal.
+  const [ownState, setOwnState] = useState(initialState);
   const poster = posterUrl(posterPath, "w342");
 
   const isOwnCard = activeId === tmdbId;
@@ -46,7 +48,9 @@ export function MovieCard({
   const shownOverview = details?.overview ?? (isOwnCard ? overview : "");
   const shownPoster = posterUrl(details?.posterPath ?? (isOwnCard ? posterPath : null), "w500");
   const shownImdbId = details?.imdbId ?? (isOwnCard ? imdbId : null);
-  const shownState = details?.state ?? (isOwnCard ? initialState : "none");
+  // Voor de eigen film is ownState leidend: die is al bijgewerkt door een klik,
+  // terwijl details?.state de stand van het laatste ophaalmoment is.
+  const shownState = isOwnCard ? ownState : (details?.state ?? "none");
 
   // Lazy: alleen ophalen zodra de modal daadwerkelijk opengaat, niet al bij het
   // renderen van elke kaart in een grid/carousel. Draait opnieuw bij het wisselen
@@ -93,7 +97,12 @@ export function MovieCard({
           )}
         </button>
         <div className="absolute bottom-1.5 right-1.5">
-          <MovieActionButton tmdbId={tmdbId} initial={initialState} compact />
+          <MovieActionButton
+            tmdbId={tmdbId}
+            value={ownState}
+            onChange={setOwnState}
+            compact
+          />
         </div>
       </div>
 
@@ -149,11 +158,21 @@ export function MovieCard({
                 {shownOverview || (details ? "Geen samenvatting beschikbaar." : "")}
               </p>
               <div className="flex flex-wrap items-center gap-3">
-                <MovieActionButton
-                  key={activeId}
-                  tmdbId={activeId}
-                  initial={shownState}
-                />
+                {isOwnCard ? (
+                  <MovieActionButton
+                    tmdbId={activeId}
+                    value={ownState}
+                    onChange={setOwnState}
+                  />
+                ) : (
+                  // Een ander deel van de reeks: eigen state, key zodat hij
+                  // opnieuw begint bij het wisselen van film.
+                  <MovieActionButton
+                    key={activeId}
+                    tmdbId={activeId}
+                    initial={shownState}
+                  />
+                )}
                 <Link
                   href={`/similar/movie/${activeId}`}
                   className="text-xs text-(--color-muted) underline decoration-white/20 hover:text-white"
@@ -214,7 +233,22 @@ export function MovieCard({
                             </button>
                             {!isCurrent && (
                               <div className="absolute bottom-1 right-1">
-                                <MovieActionButton tmdbId={p.tmdbId} initial={p.state} compact />
+                                {/* De eigen film kan óók als tegel in de strook staan;
+                                    die deelt de status met de kaart eronder. */}
+                                {p.tmdbId === tmdbId ? (
+                                  <MovieActionButton
+                                    tmdbId={p.tmdbId}
+                                    value={ownState}
+                                    onChange={setOwnState}
+                                    compact
+                                  />
+                                ) : (
+                                  <MovieActionButton
+                                    tmdbId={p.tmdbId}
+                                    initial={p.state}
+                                    compact
+                                  />
+                                )}
                               </div>
                             )}
                           </div>
