@@ -4,7 +4,11 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { posterUrl, type WatchProviders } from "@/lib/tmdb";
-import { getMovieWatchProviders, getMovieCollectionInfo } from "@/app/(app)/actions";
+import {
+  getMovieWatchProviders,
+  getMovieCollectionInfo,
+  getMovieTrailerUrl,
+} from "@/app/(app)/actions";
 import { MovieActionButton } from "@/app/(app)/_components/MovieActionButton";
 import { ExternalLinks } from "@/app/(app)/_components/ExternalLinks";
 import { WatchProvidersList } from "@/app/(app)/_components/WatchProvidersList";
@@ -34,6 +38,7 @@ export function MovieCard({
   const [open, setOpen] = useState(false);
   const [providers, setProviders] = useState<WatchProviders | null>(null);
   const [collection, setCollection] = useState<CollectionInfo>(null);
+  const [trailerUrl, setTrailerUrl] = useState<string | null>(null);
   const poster = posterUrl(posterPath, "w342");
   const posterLarge = posterUrl(posterPath, "w500");
 
@@ -47,6 +52,9 @@ export function MovieCard({
     });
     getMovieCollectionInfo(tmdbId).then((c) => {
       if (!cancelled) setCollection(c);
+    });
+    getMovieTrailerUrl(tmdbId).then((url) => {
+      if (!cancelled) setTrailerUrl(url);
     });
     return () => {
       cancelled = true;
@@ -132,7 +140,12 @@ export function MovieCard({
                 >
                   Soortgelijke films
                 </Link>
-                <ExternalLinks imdbId={imdbId} tmdbId={tmdbId} kind="movie" />
+                <ExternalLinks
+                  imdbId={imdbId}
+                  tmdbId={tmdbId}
+                  kind="movie"
+                  trailerUrl={trailerUrl}
+                />
               </div>
               <div className="mt-4">
                 <WatchProvidersList providers={providers} />

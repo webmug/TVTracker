@@ -4,7 +4,12 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { syncShow, syncMovie } from "@/lib/shows";
-import { getWatchProviders, getMovieCollection, type WatchProviders } from "@/lib/tmdb";
+import {
+  getWatchProviders,
+  getTrailerUrl,
+  getMovieCollection,
+  type WatchProviders,
+} from "@/lib/tmdb";
 import {
   getSeriesLibraryPage,
   getWatchedMoviesPage,
@@ -218,6 +223,12 @@ export async function loadMoreWatchedMovies(
 export async function getMovieWatchProviders(tmdbId: number): Promise<WatchProviders | null> {
   await requireUser();
   return getWatchProviders(tmdbId, "movie").catch(() => null);
+}
+
+// Trailer voor de filmdetailmodal, net als de streamingdiensten lazy opgehaald.
+export async function getMovieTrailerUrl(tmdbId: number): Promise<string | null> {
+  await requireUser();
+  return getTrailerUrl(tmdbId, "movie").catch(() => null);
 }
 
 // Filmreeks (TMDB-collection) voor de filmdetailmodal: vervolgen/prequels, bv. een

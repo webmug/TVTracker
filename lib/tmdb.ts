@@ -289,6 +289,8 @@ export interface WatchProvider {
 export interface WatchProviders {
   link: string | null;
   flatrate: WatchProvider[];
+  rent: WatchProvider[];
+  buy: WatchProvider[];
 }
 
 interface RawWatchProvider {
@@ -302,18 +304,54 @@ export async function getWatchProviders(
   kind: MediaKind
 ): Promise<WatchProviders | null> {
   const data = await tmdb<{
-    results?: Record<string, { link?: string; flatrate?: RawWatchProvider[] }>;
+    results?: Record<
+      string,
+      { link?: string; flatrate?: RawWatchProvider[]; rent?: RawWatchProvider[]; buy?: RawWatchProvider[] }
+    >;
   }>(`/${kind}/${tmdbId}/watch/providers`);
   const region = data.results?.[WATCH_REGION];
-  if (!region || !region.flatrate?.length) return null;
-  return {
-    link: region.link ?? null,
-    flatrate: region.flatrate.map((p) => ({
-      id: p.provider_id,
-      name: p.provider_name,
-      logoPath: p.logo_path,
-    })),
-  };
+  if (!region) return null;
+
+  const map = (raw: RawWatchProvider[] | undefined): WatchProvider[] =>
+    (raw ?? []).map((p) => ({ id: p.provider_id, name: p.provider_name, logoPath: p.logo_path }));
+
+  const flatrate = map(region.flatrate);
+  const rent = map(region.rent);
+  const buy = map(region.buy);
+  // Films zitten in NL vaak alleen in huur/koop-catalogi; dan is er nog steeds iets
+  // te tonen, ook al is er geen abonnementsdienst.
+  if (!flatrate.length && !rent.length && !buy.length) return null;
+  return { link: region.link ?? null, flatrate, rent, buy };
+}
+
+// ---------------------------------------------------------------------------
+// Trailer: TMDB's videos-endpoint. We zoeken eerst een NL-trailer en vallen
+// terug op Engels; van de kandidaten heeft een officiële "Trailer" voorrang op
+// een teaser. Alleen YouTube, want dat is wat we kunnen linken.
+// ---------------------------------------------------------------------------
+
+interface RawVideo {
+  key: string;
+  site: string;
+  type: string;
+  official?: boolean;
+  name: string;
+}
+
+function pickTrailer(videos: RawVideo[]): string | null {
+  const youtube = videos.filter((v) => v.site === "YouTube");
+  const score = (v: RawVideo) =>
+    (v.type === "Trailer" ? 2 : v.type === "Teaser" ? 1 : 0) + (v.official ? 0.5 : 0);
+  const best = youtube.filter((v) => score(v) > 0).sort((a, b) => score(b) - score(a))[0];
+  return best ? `https://www.youtube.com/watch?v=${best.key}` : null;
+}
+
+export async function getTrailerUrl(tmdbId: number, kind: MediaKind): Promise<string | null> {
+  const [nl, en] = await Promise.all([
+    tmdb<{ results?: RawVideo[] }>(`/${kind}/${tmdbId}/videos`),
+    tmdb<{ results?: RawVideo[] }>(`/${kind}/${tmdbId}/videos`, { language: "en-US" }),
+  ]);
+  return pickTrailer(nl.results ?? []) ?? pickTrailer(en.results ?? []);
 }
 
 export function posterUrl(path: string | null | undefined, size = "w342"): string | null {

@@ -7,6 +7,7 @@ import { syncShow } from "@/lib/shows";
 import {
   posterUrl,
   getWatchProviders,
+  getTrailerUrl,
   getShow,
   tvStatusLabel,
   parseDate,
@@ -71,6 +72,9 @@ export default async function ShowPage({
   // Streamingdiensten zijn een leuke extra, geen essentieel gegeven -> pagina
   // moet blijven werken als TMDB hier hapert.
   const providers = await getWatchProviders(tmdbId, "tv").catch(() => null);
+
+  // Idem voor de trailer: leuk als het lukt, geen reden om de pagina te breken.
+  const trailerUrl = await getTrailerUrl(tmdbId, "tv").catch(() => null);
 
   // Volgende aflevering (next_episode_to_air) live van TMDB, alleen zinvol voor
   // lopende series. Ook een extra: de pagina blijft werken als dit hapert.
@@ -139,7 +143,12 @@ export default async function ShowPage({
             >
               Soortgelijke series
             </Link>
-            <ExternalLinks imdbId={show.imdbId} tmdbId={show.tmdbId} kind="tv" />
+            <ExternalLinks
+              imdbId={show.imdbId}
+              tmdbId={show.tmdbId}
+              kind="tv"
+              trailerUrl={trailerUrl}
+            />
           </div>
           <div className="mt-4">
             <WatchProvidersList providers={providers} />
