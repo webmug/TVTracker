@@ -7,8 +7,8 @@ import { syncShow, syncMovie } from "@/lib/shows";
 import {
   getWatchProviders,
   getTrailerUrl,
+  getMovie,
   getMovieCollection,
-  type WatchProviders,
 } from "@/lib/tmdb";
 import {
   getSeriesLibraryPage,
@@ -218,24 +218,48 @@ export async function loadMoreWatchedMovies(
   return getWatchedMoviesPage(user.id, offset, undefined, providerIds);
 }
 
-// Streamingdiensten voor de filmdetailmodal (films hebben geen server-gerenderde
-// detailpagina, dus dit wordt lazy vanuit de client opgehaald zodra de modal opent).
-export async function getMovieWatchProviders(tmdbId: number): Promise<WatchProviders | null> {
-  await requireUser();
-  return getWatchProviders(tmdbId, "movie").catch(() => null);
-}
+// Alles wat de filmdetailmodal lazy nodig heeft in één call (films hebben geen
+// server-gerenderde detailpagina). Ook de kerngegevens zelf, zodat de modal kan
+// wisselen naar een andere film uit de reeks zonder de pagina te verlaten.
+// Elk onderdeel faalt zelfstandig: een hikkende TMDB-call mag de modal niet slopen.
+export async function getMovieModalDetails(tmdbId: number) {
+  const user = await requireUser();
+  const [details, providers, trailerUrl, collection] = await Promise.all([
+    getMovie(tmdbId).catch(() => null),
+    getWatchProviders(tmdbId, "movie").catch(() => null),
+    getTrailerUrl(tmdbId, "movie").catch(() => null),
+    loadCollectionInfo(tmdbId, user.id),
+  ]);
 
-// Trailer voor de filmdetailmodal, net als de streamingdiensten lazy opgehaald.
-export async function getMovieTrailerUrl(tmdbId: number): Promise<string | null> {
-  await requireUser();
-  return getTrailerUrl(tmdbId, "movie").catch(() => null);
+  const own = await prisma.movie.findUnique({
+    where: { tmdbId },
+    select: {
+      watched: { where: { userId: user.id }, select: { id: true } },
+      watchlist: { where: { userId: user.id }, select: { id: true } },
+    },
+  });
+
+  return {
+    title: details?.title ?? null,
+    year: details?.release_date ? details.release_date.slice(0, 4) : null,
+    overview: details?.overview ?? null,
+    posterPath: details?.poster_path ?? null,
+    imdbId: details?.imdb_id ?? null,
+    state: (own?.watched.length
+      ? "watched"
+      : own?.watchlist.length
+        ? "watchlist"
+        : "none") as "none" | "watchlist" | "watched",
+    providers,
+    trailerUrl,
+    collection,
+  };
 }
 
 // Filmreeks (TMDB-collection) voor de filmdetailmodal: vervolgen/prequels, bv. een
-// trilogie. Lazy vanuit de client, net als de streamingdiensten. Per deel geven we
-// de watchlist/gezien-status van de gebruiker mee zodat de knoppen goed staan.
-export async function getMovieCollectionInfo(tmdbId: number) {
-  const user = await requireUser();
+// trilogie. Per deel geven we de watchlist/gezien-status van de gebruiker mee zodat
+// de knoppen goed staan. Interne helper: gaat mee in getMovieModalDetails.
+async function loadCollectionInfo(tmdbId: number, userId: string) {
   const collection = await getMovieCollection(tmdbId).catch(() => null);
   if (!collection) return null;
 
@@ -243,8 +267,8 @@ export async function getMovieCollectionInfo(tmdbId: number) {
     where: { tmdbId: { in: collection.parts.map((p) => p.tmdbId) } },
     select: {
       tmdbId: true,
-      watched: { where: { userId: user.id }, select: { id: true } },
-      watchlist: { where: { userId: user.id }, select: { id: true } },
+      watched: { where: { userId }, select: { id: true } },
+      watchlist: { where: { userId }, select: { id: true } },
     },
   });
   const stateByTmdbId = new Map<number, "none" | "watchlist" | "watched">(
