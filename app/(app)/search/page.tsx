@@ -9,7 +9,7 @@ import {
 } from "@/lib/tmdb";
 import { PosterCard } from "@/app/(app)/_components/PosterCard";
 import { FollowButton } from "@/app/(app)/_components/FollowButton";
-import { MovieActionButton } from "@/app/(app)/_components/MovieActionButton";
+import { MovieCard } from "@/app/(app)/_components/MovieCard";
 
 type SearchType = "all" | "tv" | "movie";
 
@@ -121,33 +121,37 @@ export default async function SearchPage({
 
       {results.length > 0 && (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-4">
-          {results.map((r) => (
-            <PosterCard
-              key={`${r.kind}-${r.id}`}
-              posterPath={r.posterPath}
-              title={r.title}
-              subtitle={r.year}
-              href={r.kind === "tv" ? `/show/${r.id}` : undefined}
-              fallbackEmoji={r.kind === "tv" ? "📺" : "🎬"}
-              action={
-                r.kind === "tv" ? (
-                  <FollowButton tmdbId={r.id} following={followedIds.has(r.id)} />
-                ) : (
-                  <MovieActionButton
-                    tmdbId={r.id}
-                    compact
-                    initial={
-                      watchedIds.has(r.id)
-                        ? "watched"
-                        : watchlistIds.has(r.id)
-                          ? "watchlist"
-                          : "none"
-                    }
-                  />
-                )
-              }
-            />
-          ))}
+          {results.map((r) =>
+            // Series linken naar hun detailpagina; films hebben die niet, dus die
+            // krijgen dezelfde kaart-met-detailmodal als op Verken en Films.
+            r.kind === "tv" ? (
+              <PosterCard
+                key={`tv-${r.id}`}
+                posterPath={r.posterPath}
+                title={r.title}
+                subtitle={r.year}
+                href={`/show/${r.id}`}
+                fallbackEmoji="📺"
+                action={<FollowButton tmdbId={r.id} following={followedIds.has(r.id)} />}
+              />
+            ) : (
+              <MovieCard
+                key={`movie-${r.id}`}
+                tmdbId={r.id}
+                title={r.title}
+                year={r.year}
+                overview={r.overview}
+                posterPath={r.posterPath}
+                initialState={
+                  watchedIds.has(r.id)
+                    ? "watched"
+                    : watchlistIds.has(r.id)
+                      ? "watchlist"
+                      : "none"
+                }
+              />
+            )
+          )}
         </div>
       )}
     </main>
