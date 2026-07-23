@@ -57,6 +57,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
   events: {
+    // Bij elke geslaagde inlog (klik op de magic link) de laatste-login-tijd
+    // bijwerken, zodat een admin op /admin/invites ziet wie recent actief was.
+    async signIn({ user }) {
+      if (!user.id) return;
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { lastLoginAt: new Date() },
+      });
+    },
     async createUser({ user }) {
       if (!user.email) return;
       const email = user.email.toLowerCase();
