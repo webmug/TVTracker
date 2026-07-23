@@ -66,7 +66,14 @@ export default async function InvitesPage() {
   const invites = await prisma.invite.findMany({ orderBy: { createdAt: "desc" } });
   const users = await prisma.user.findMany({
     orderBy: { createdAt: "asc" },
-    select: { email: true, role: true, createdAt: true, lastLoginAt: true },
+    select: {
+      email: true,
+      role: true,
+      createdAt: true,
+      lastLoginAt: true,
+      // Aantallen voor de gebruikerslijst: gevolgde series en gelogde films.
+      _count: { select: { follows: true, watchedMovies: true } },
+    },
   });
 
   return (
@@ -131,6 +138,10 @@ export default async function InvitesPage() {
                 {lastLoginLabel(u.lastLoginAt)}
               </span>
             </div>
+            <span className="shrink-0 text-xs text-(--color-muted)">
+              {u._count.follows} {u._count.follows === 1 ? "serie" : "series"} ·{" "}
+              {u._count.watchedMovies} {u._count.watchedMovies === 1 ? "film" : "films"}
+            </span>
             <span className="shrink-0 text-(--color-muted)">{u.role}</span>
           </li>
         ))}
