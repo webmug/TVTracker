@@ -1,14 +1,15 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/session";
 import {
-  getWatchlistMovies,
+  getWatchlistMoviesPage,
+  countWatchlistMovies,
   getWatchedMoviesPage,
   getMovieWatchProviderOptions,
   parseProviderIds,
   PAGE_SIZE,
 } from "@/lib/library";
-import { MovieCard } from "@/app/(app)/_components/MovieCard";
-import { WatchedMoviesGrid } from "@/app/(app)/_components/WatchedMoviesGrid";
+import { loadMoreWatchlistMovies, loadMoreWatchedMovies } from "@/app/(app)/actions";
+import { MoviesGrid } from "@/app/(app)/_components/MoviesGrid";
 import { ProviderFilterChips } from "@/app/(app)/_components/ProviderFilterChips";
 
 type MovieFilter = "all" | "watchlist" | "watched";
@@ -34,13 +35,14 @@ export default async function MoviesPage({
   const showWatchlist = filter === "all" || filter === "watchlist";
   const showWatched = filter === "all" || filter === "watched";
 
-  const [watchlist, watchedFirst, providerOptions] = await Promise.all([
-    showWatchlist ? getWatchlistMovies(user.id, providerIds) : Promise.resolve([]),
+  const [watchlistFirst, watchlistCount, watchedFirst, providerOptions] = await Promise.all([
+    showWatchlist ? getWatchlistMoviesPage(user.id, 0, PAGE_SIZE, providerIds) : Promise.resolve([]),
+    showWatchlist ? countWatchlistMovies(user.id, providerIds) : Promise.resolve(0),
     showWatched ? getWatchedMoviesPage(user.id, 0, PAGE_SIZE, providerIds) : Promise.resolve([]),
     getMovieWatchProviderOptions(user.id),
   ]);
 
-  const empty = watchlist.length === 0 && watchedFirst.length === 0;
+  const empty = watchlistFirst.length === 0 && watchedFirst.length === 0;
 
   return (
     <main>
@@ -97,27 +99,21 @@ export default async function MoviesPage({
         </div>
       )}
 
-      {showWatchlist && watchlist.length > 0 && (
+      {showWatchlist && watchlistFirst.length > 0 && (
         <section className="mb-10">
           {filter === "all" && (
             <h2 className="mb-3 text-sm font-medium text-(--color-muted)">
-              Wil ik zien ({watchlist.length})
+              Wil ik zien ({watchlistCount})
             </h2>
           )}
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-4">
-            {watchlist.map((m) => (
-              <MovieCard
-                key={m.id}
-                tmdbId={m.tmdbId}
-                title={m.title}
-                year={m.year ? String(m.year) : null}
-                overview={m.overview}
-                posterPath={m.posterPath}
-                imdbId={m.imdbId}
-                initialState="watchlist"
-              />
-            ))}
-          </div>
+          <MoviesGrid
+            key={`watchlist-${providerIds.join(",")}`}
+            initialItems={watchlistFirst}
+            providerIds={providerIds}
+            pageSize={PAGE_SIZE}
+            loadMore={loadMoreWatchlistMovies}
+            initialState="watchlist"
+          />
         </section>
       )}
 
@@ -126,11 +122,13 @@ export default async function MoviesPage({
           {filter === "all" && (
             <h2 className="mb-3 text-sm font-medium text-(--color-muted)">Gezien</h2>
           )}
-          <WatchedMoviesGrid
-            key={providerIds.join(",")}
+          <MoviesGrid
+            key={`watched-${providerIds.join(",")}`}
             initialItems={watchedFirst}
             providerIds={providerIds}
             pageSize={PAGE_SIZE}
+            loadMore={loadMoreWatchedMovies}
+            initialState="watched"
           />
         </section>
       )}
