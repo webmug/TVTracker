@@ -39,6 +39,20 @@ async function createInvite(formData: FormData) {
   revalidatePath("/admin/invites");
 }
 
+// Laatste login in het Nederlands, met een relatieve hint voor recente logins.
+function lastLoginLabel(date: Date | null): string {
+  if (!date) return "nog nooit ingelogd";
+  const days = Math.floor((Date.now() - date.getTime()) / 86_400_000);
+  const rel =
+    days <= 0 ? "vandaag" : days === 1 ? "gisteren" : days < 30 ? `${days} dagen geleden` : null;
+  const absolute = date.toLocaleDateString("nl-NL", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+  return rel ? `${rel} · ${absolute}` : absolute;
+}
+
 async function deleteInvite(formData: FormData) {
   "use server";
   await requireAdmin();
@@ -52,7 +66,7 @@ export default async function InvitesPage() {
   const invites = await prisma.invite.findMany({ orderBy: { createdAt: "desc" } });
   const users = await prisma.user.findMany({
     orderBy: { createdAt: "asc" },
-    select: { email: true, role: true, createdAt: true },
+    select: { email: true, role: true, createdAt: true, lastLoginAt: true },
   });
 
   return (
@@ -107,8 +121,17 @@ export default async function InvitesPage() {
             key={u.email}
             className="flex items-center gap-3 rounded-lg border border-white/10 bg-(--color-panel) px-3 py-2 text-sm"
           >
-            <span className="flex-1">{u.email}</span>
-            <span className="text-(--color-muted)">{u.role}</span>
+            <div className="min-w-0 flex-1">
+              <span className="block truncate">{u.email}</span>
+              <span
+                className={
+                  "text-xs " + (u.lastLoginAt ? "text-(--color-muted)" : "text-amber-300")
+                }
+              >
+                {lastLoginLabel(u.lastLoginAt)}
+              </span>
+            </div>
+            <span className="shrink-0 text-(--color-muted)">{u.role}</span>
           </li>
         ))}
       </ul>
