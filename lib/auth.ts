@@ -1,12 +1,37 @@
 import NextAuth from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
+import type { Adapter } from "next-auth/adapters";
+import { Prisma } from "@prisma/client";
 import Resend from "next-auth/providers/resend";
 import { prisma } from "@/lib/prisma";
 import { sendLoginLink } from "@/lib/email";
 import { isAdminEmail, isAllowedToSignIn } from "@/lib/access";
 
+// De standaard PrismaAdapter verwijdert een sessie met session.delete(), die een
+// P2025 gooit als de sessie al weg is (verlopen, of een tweede uitlog-klik). Dat
+// liet "Uitloggen" met een AdapterError falen, waardoor de redirect naar /login
+// nooit plaatsvond en de cookie bleef hangen. We vangen precies dat geval op: de
+// sessie is dan tóch weg, dus uitloggen is geslaagd.
+function safePrismaAdapter(): Adapter {
+  const adapter = PrismaAdapter(prisma);
+  const deleteSession = adapter.deleteSession;
+  if (deleteSession) {
+    adapter.deleteSession = (async (sessionToken: string) => {
+      try {
+        return await deleteSession(sessionToken);
+      } catch (err) {
+        if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {
+          return null;
+        }
+        throw err;
+      }
+    }) as Adapter["deleteSession"];
+  }
+  return adapter;
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: PrismaAdapter(prisma),
+  adapter: safePrismaAdapter(),
   trustHost: true,
   session: { strategy: "database" },
   pages: {
