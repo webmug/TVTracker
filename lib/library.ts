@@ -144,15 +144,24 @@ export interface MovieCard {
   year: number | null;
 }
 
-export async function getWatchlistMovies(userId: string, providerIds?: number[]): Promise<MovieCard[]> {
+// Filter dat de watchlist/gezien-queries delen: optioneel op streamingdienst.
+function movieProviderFilter(providerIds?: number[]) {
+  return providerIds?.length
+    ? { movie: { watchProviders: { some: { providerId: { in: providerIds } } } } }
+    : {};
+}
+
+export async function getWatchlistMoviesPage(
+  userId: string,
+  offset: number,
+  take = PAGE_SIZE,
+  providerIds?: number[]
+): Promise<MovieCard[]> {
   const rows = await prisma.watchlistMovie.findMany({
-    where: {
-      userId,
-      ...(providerIds?.length
-        ? { movie: { watchProviders: { some: { providerId: { in: providerIds } } } } }
-        : {}),
-    },
+    where: { userId, ...movieProviderFilter(providerIds) },
     orderBy: { addedAt: "desc" },
+    skip: offset,
+    take,
     select: {
       movie: {
         select: { id: true, tmdbId: true, imdbId: true, title: true, overview: true, posterPath: true, releaseDate: true },
@@ -162,6 +171,13 @@ export async function getWatchlistMovies(userId: string, providerIds?: number[])
   return rows.map((r) => toMovieCard(r.movie));
 }
 
+// Aantal films op de watchlist (voor de kop), los van de paginatie.
+export async function countWatchlistMovies(userId: string, providerIds?: number[]): Promise<number> {
+  return prisma.watchlistMovie.count({
+    where: { userId, ...movieProviderFilter(providerIds) },
+  });
+}
+
 export async function getWatchedMoviesPage(
   userId: string,
   offset: number,
@@ -169,12 +185,7 @@ export async function getWatchedMoviesPage(
   providerIds?: number[]
 ): Promise<MovieCard[]> {
   const rows = await prisma.watchedMovie.findMany({
-    where: {
-      userId,
-      ...(providerIds?.length
-        ? { movie: { watchProviders: { some: { providerId: { in: providerIds } } } } }
-        : {}),
-    },
+    where: { userId, ...movieProviderFilter(providerIds) },
     orderBy: { watchedAt: "desc" },
     skip: offset,
     take,

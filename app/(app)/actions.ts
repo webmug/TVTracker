@@ -13,6 +13,7 @@ import {
 import {
   getSeriesLibraryPage,
   getWatchedMoviesPage,
+  getWatchlistMoviesPage,
   type FollowFilter,
   type SeriesCard,
   type MovieCard,
@@ -216,6 +217,14 @@ export async function loadMoreWatchedMovies(
 ): Promise<MovieCard[]> {
   const user = await requireUser();
   return getWatchedMoviesPage(user.id, offset, undefined, providerIds);
+}
+
+export async function loadMoreWatchlistMovies(
+  offset: number,
+  providerIds?: number[]
+): Promise<MovieCard[]> {
+  const user = await requireUser();
+  return getWatchlistMoviesPage(user.id, offset, undefined, providerIds);
 }
 
 // Alles wat de filmdetailmodal lazy nodig heeft in één call (films hebben geen
